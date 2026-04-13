@@ -349,7 +349,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 |-------|-------------|--------|
 | 0 | pacr-types (Estimate, ETS, Landauer, Complexity, Record) | ✅ |
 | 1 | causal-dag (lock-free DAG) | ✅ |
-| 2 | ets-probe + landauer-probe (hardware measurement) | ⬜ |
+| 2 | ets-probe + landauer-probe (hardware measurement) | ✅ |
 | 3 | epsilon-engine (CSSR ε-machine) | ⬜ |
 | 4 | autopoiesis + pacr-bridge (feedback loop) | ⬜ |
 | 5 | aevum-core runtime + CLI + 72h validation | ⬜ |
