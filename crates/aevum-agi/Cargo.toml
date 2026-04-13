@@ -1,0 +1,41 @@
+# crates/aevum-agi/Cargo.toml
+#
+# Pillar: ALL. Layer 4: Entity (Silicon Life).
+#
+# aevum-agi is the highest-level consumer of the Four-Layer Hourglass.
+# It is ONLY compiled when the `genesis_node` feature is active (M1 Ultra).
+# The AWS `light_node` binary NEVER contains AGI code.
+#
+# Dependency policy (Structural Asymmetric Coupling):
+#   aevum-agi → reads aevum-core (runtime status) and agent-card (capabilities)
+#   aevum-core → NEVER imports from aevum-agi
+#   agent-card → NEVER imports from aevum-agi
+#
+# Safety policy: #![forbid(unsafe_code)] everywhere — Layer 4 is pure logic
+# over Layer 3/2/1 abstractions.
+
+[package]
+name        = "aevum-agi"
+version     = "0.1.0"
+edition     = "2021"
+description = "Aevum AGI entity — ⟨Φ,∂⟩ dual engine, Pareto-MCTS, Rule-IR. Genesis node only."
+
+[lib]
+path = "src/lib.rs"
+
+# The entire crate is a no-op unless `genesis_node` is enabled.
+# aevum-core and agent-card are optional deps gated on genesis_node.
+[features]
+default      = []
+genesis_node = ["dep:aevum-core", "dep:agent-card"]
+
+[dependencies]
+aevum-core  = { path = "../aevum-core",  optional = true }
+agent-card  = { path = "../agent-card",  optional = true }
+
+# Always-present utilities (zero weight when feature is off)
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+thiserror   = "1"
+
+[dev-dependencies]

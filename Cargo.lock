@@ -6,9 +6,21 @@ version = 4
 name = "aevum"
 version = "0.1.0"
 dependencies = [
+ "aevum-agi",
  "aevum-core",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "aevum-agi"
+version = "0.1.0"
+dependencies = [
+ "aevum-core",
+ "agent-card",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

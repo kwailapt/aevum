@@ -354,7 +354,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 | 4 | autopoiesis + pacr-bridge (feedback loop) | ✅ |
 | 5 | aevum-core runtime + CLI + 72h validation | ✅ |
 | 6 | agent-card schema + envelope wire format | ✅ |
-| 7 | aevum-agi (⟨Φ,∂⟩ engine, genesis_node only) | ⬜ |
+| 7 | aevum-agi (⟨Φ,∂⟩ engine, genesis_node only) | ✅ |
 
 ### Model Usage Policy（模型使用規範）
 
