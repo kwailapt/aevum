@@ -1,0 +1,11 @@
+[package]
+name = "pacr-types"
+version = "0.1.0"
+edition = "2021"
+description = "The PACR 6-tuple — the immutable physical contract for Aevum records."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+smallvec = { version = "1", features = ["serde"] }
+bytes = { version = "1", features = ["serde"] }
+thiserror = "1"

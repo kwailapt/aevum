@@ -1,0 +1,9 @@
+[package]
+name = "landauer-audit"
+version = "0.1.0"
+edition = "2021"
+description = "Real-time Landauer cost auditor: measures bit erasures and energy bounds."
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+thiserror = "1"

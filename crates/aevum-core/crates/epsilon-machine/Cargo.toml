@@ -1,0 +1,9 @@
+[package]
+name = "epsilon-machine"
+version = "0.1.0"
+edition = "2021"
+description = "First-order ε-machine approximation computing S_T and H_T from data streams."
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+thiserror = "1"

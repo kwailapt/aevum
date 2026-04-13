@@ -1,0 +1,91 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Aevum A2A Civilization Node (NTG v0.4)
+#
+# Services:
+#   router      — A2A causal-bridge router, always-on (port 8420)
+#   timechain   — One-shot CSO ledger hasher; run with:
+#                   docker compose run --rm timechain [--dry-run]
+#
+# SUBSTRATE NOTE:
+#   autopoietic_core.py (MLX evolutionary core) requires Apple Silicon / macOS.
+#   Run it natively: `python autopoietic_core.py`
+#   It connects to the router via http://localhost:8420 (or the host IP when
+#   the router is containerised — set GATEWAY env var accordingly).
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── A2A Protocol Router (Node 0) ────────────────────────────────────────────
+  router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aevum-router
+    restart: unless-stopped
+    ports:
+      - "8420:8420"
+    environment:
+      # Uvicorn log level: debug | info | warning | error | critical
+      - LOG_LEVEL=info
+    volumes:
+      # Mount a named volume so causal_timechain git anchors persist across
+      # restarts.  The git repo is initialised on first run if absent.
+      - router-git:/app/.git
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8420/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ── CSO Ledger Hasher (one-shot) ────────────────────────────────────────────
+  # Usage:
+  #   docker compose run --rm timechain              # live commit
+  #   docker compose run --rm timechain --dry-run    # preview only
+  timechain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aevum-timechain
+    # Override the default CMD to run the timechain script
+    entrypoint: ["python", "/app/causal_timechain.py"]
+    command: []
+    environment:
+      - GATEWAY=http://router:8420
+    depends_on:
+      router:
+        condition: service_healthy
+    volumes:
+      # Share the same git volume so anchor commits land in router's history
+      - router-git:/app/.git
+    profiles:
+      - tools   # opt-in: `docker compose --profile tools run --rm timechain`
+
+  # ── Cloudflare Tunnel (optional, franchise routing back to Meta-OCF) ─────────
+  # Activates when the `tunnel` profile is requested:
+  #   CLOUDFLARE_TUNNEL_TOKEN=<token> docker compose --profile tunnel up
+  #
+  # This sidecar mirrors the ECS Fargate deployment topology exactly — the same
+  # CF_TUNNEL_TOKEN env var is used in both local (here) and cloud (terraform/)
+  # deployments.  This lets an operator test the full Cloudflare routing before
+  # pushing their NTG to the cloud.
+  #
+  # Obtain a token at: https://one.dash.cloudflare.com/ → Zero Trust → Tunnels
+  # Set the tunnel's public hostname to route to http://router:8420 internally.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: aevum-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN to your Cloudflare Tunnel token}
+    depends_on:
+      router:
+        condition: service_healthy
+    profiles:
+      - tunnel   # opt-in: `docker compose --profile tunnel up`
+
+volumes:
+  router-git:
+    driver: local

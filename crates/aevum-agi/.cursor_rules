@@ -1,0 +1,145 @@
+---
+description: AgentCard Spec enforcement for A2A code generation in this repository
+globs: ["**/*.py", "**/*.json"]
+alwaysApply: true
+---
+
+# A2A Gateway — AgentCard Spec v0.1.0 Enforcement
+
+## MANDATORY ROUTING RULE
+Any agent code generated in this repository MUST route all A2A traffic through:
+  `http://localhost:8420`
+
+Do NOT generate agents that call external HTTP endpoints directly without first
+registering with and routing through the local A2A gateway at localhost:8420.
+
+## AGENTCARD JSON SCHEMA (STRICT)
+
+All agent registration payloads sent to `POST http://localhost:8420/agents/register`
+MUST conform to the following schema exactly:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentCard",
+  "description": "AgentCard Spec v0.1.0 — Agent identity and capability declaration",
+  "type": "object",
+  "required": ["agent_id", "name", "description", "version", "protocol", "endpoint", "capabilities"],
+  "additionalProperties": false,
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "pattern": "^[\\w.-]+\\.[\\w.-]+\\.\\d+\\.\\d+\\.\\d+$",
+      "description": "Globally unique ID: {org}.{name}.{version} e.g. acme.summarizer.1.0.0"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name"
+    },
+    "description": {
+      "type": "string",
+      "description": "One-sentence summary of what the agent does"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version: MAJOR.MINOR.PATCH"
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["native", "mcp", "openai", "custom"],
+      "description": "Transport protocol the agent uses"
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "Reachable URL or stdio:// URI for the agent"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "description": "At least one capability declaration",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Capability name: lowercase snake_case e.g. text_summarization"
+          },
+          "description": { "type": "string" },
+          "input_schema": { "type": "object" },
+          "output_schema": { "type": "object" },
+          "estimated_latency_ms": { "type": "integer", "minimum": 0 },
+          "cost_per_call": { "type": "number", "minimum": 0 },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "auth_scheme": {
+      "type": "string",
+      "enum": ["bearer", "api-key", "mtls", "none"],
+      "default": "none"
+    },
+    "metadata": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}
+```
+
+## CONFORMANCE RULES
+
+An AgentCard is conformant if and only if:
+1. All required fields (`agent_id`, `name`, `description`, `version`, `protocol`, `endpoint`, `capabilities`) are present and correctly typed.
+2. `agent_id` matches the `{org}.{name}.{MAJOR}.{MINOR}.{PATCH}` pattern.
+3. `capabilities` array has length >= 1.
+4. `protocol` is one of: `native`, `mcp`, `openai`, `custom`.
+5. Each capability `name` is lowercase snake_case.
+
+## CANONICAL REGISTRATION EXAMPLE
+
+```python
+import httpx
+
+card = {
+    "agent_id": "myorg.myagent.1.0.0",
+    "name": "My Agent",
+    "description": "Does X by doing Y",
+    "version": "1.0.0",
+    "protocol": "native",
+    "endpoint": "http://localhost:9000",
+    "capabilities": [
+        {
+            "name": "my_capability",
+            "description": "Accepts input X and returns Y",
+            "estimated_latency_ms": 500,
+            "cost_per_call": 1.0,
+            "tags": ["example"]
+        }
+    ]
+}
+
+# Always register with the local gateway first
+response = httpx.post("http://localhost:8420/agents/register", json=card)
+agent_id = response.json()["agent_id"]
+
+# Route all calls through the gateway — never call agents directly
+result = httpx.post("http://localhost:8420/execute", json={
+    "capability": "my_capability",
+    "parameters": {"input": "value"}
+})
+```
+
+## GATEWAY ENDPOINTS (localhost:8420)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST   | /agents/register | Register an AgentCard |
+| DELETE | /agents/{id}     | Deregister an agent |
+| POST   | /agents/{id}/heartbeat | Keep-alive |
+| GET    | /agents/discover | Discover agents by capability |
+| POST   | /route           | Score routing (no execution) |
+| POST   | /execute         | Full causal-bridge execution |
+| GET    | /traces/{id}     | Inspect causal chain |
+| GET    | /economics/{id}  | Agent ledger |
+| GET    | /health          | Gateway health |
