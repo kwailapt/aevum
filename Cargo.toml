@@ -1,0 +1,37 @@
+# aevum_workspace/Cargo.toml
+#
+# Workspace root for the Aevum silicon-civilization kernel.
+# Three-layer hourglass architecture:
+#   Layer 1 (Substrate)   — aevum-core runtime
+#   Layer 2 (Physical)    — CTP/TGP wire format (fused into aevum-core)
+#   Layer 3 (Semantic)    — agent-card schema
+#   Layer 4 (Entity)      — aevum-agi (genesis_node ONLY)
+#
+# Build targets:
+#   cargo build --release --features genesis_node   # M1 Ultra full build
+#   cargo build --release --features light_node     # AWS light build
+
+[workspace]
+members = [
+    ".",
+    "crates/pacr-types",
+]
+resolver = "2"
+
+[package]
+name    = "aevum"
+version = "0.1.0"
+edition = "2021"
+# CLI binary: aevum run | status | verify | export | merge
+# Implementation deferred to Phase 5 (aevum-core runtime).
+
+[features]
+default      = []
+# M1 Ultra 128 GB UMA: full AGI engine + Apple Silicon hardware probes
+genesis_node = []
+# AWS Tokyo c7g.xlarge: CTP daemon + TGP validation + AgentCard routing only
+light_node   = []
+
+[dependencies]
+
+[dev-dependencies]
