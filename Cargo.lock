@@ -32,6 +32,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent-card"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "pacr-types",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"

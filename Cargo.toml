@@ -21,6 +21,7 @@ members = [
     "crates/epsilon-engine",
     "crates/autopoiesis",
     "crates/aevum-core",
+    "crates/agent-card",
 ]
 # Exclude the legacy nested crates inside crates/aevum-core/crates/ —
 # they are inert on disk and should not be discovered by the root workspace.
