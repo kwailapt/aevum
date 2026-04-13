@@ -378,3 +378,17 @@ If no physical law forces it → make it configurable, not hardcoded.
   優點：極速且極便宜，適合 plan 模式下的執行階段。
   
 Update this table after each phase completion: change ⬜ to ✅.
+
+---
+
+## §8 實際物理拓撲（2026-04-14 確認）
+
+| 節點 | Tailscale IP | 角色 | 延遲 |
+|------|-------------|------|------|
+| M1 Ultra 128GB | 100.113.207.108 | Genesis Node | 本機 |
+| AWS Tokyo c7g | 100.116.253.50 | Membrane Router | ~54ms |
+| NAS 23TB | 100.82.176.54 | State Vault | ~2ms |
+
+- state_vault → /Volumes/Aevum/aevum_state_vault（外部 SSD）
+- NAS 內網：192.168.3.54（低延遲本地訪問）
+- 所有節點通過 Tailscale WireGuard 加密互聯
