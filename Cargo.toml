@@ -53,5 +53,7 @@ aevum-core = { path = "crates/aevum-core" }
 aevum-agi  = { path = "crates/aevum-agi" }
 tokio      = { version = "1", features = ["full"] }
 serde_json = "1"
+serde      = { version = "1", features = ["derive"] }
+toml       = "0.8"
 
 [dev-dependencies]

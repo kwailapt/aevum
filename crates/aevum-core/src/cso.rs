@@ -295,7 +295,7 @@ use axum::{
     response::IntoResponse,
 };
 
-/// `GET /cso/reputation/:agent_id`
+/// `GET /cso/reputation/{agent_id}`
 ///
 /// Returns `{ agent_id, rho, reputation_score, rank }`.
 /// Returns 404 if the agent has not yet been observed.

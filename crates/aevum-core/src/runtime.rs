@@ -463,12 +463,12 @@ pub async fn start(cfg: RuntimeConfig) -> Result<Arc<RuntimeState>, std::io::Err
 /// Serve the CSO reputation API on the given TCP listener.
 ///
 /// Routes:
-/// - `GET  /cso/reputation/:agent_id`
+/// - `GET  /cso/reputation/{agent_id}`
 /// - `GET  /cso/leaderboard`
 /// - `POST /cso/record_interaction`
 async fn run_cso_http(cso: Arc<CsoIndex>, listener: TcpListener) {
     let app = Router::new()
-        .route("/cso/reputation/:agent_id", routing::get(handle_get_reputation))
+        .route("/cso/reputation/{agent_id}", routing::get(handle_get_reputation))
         .route("/cso/leaderboard",          routing::get(handle_get_leaderboard))
         .route("/cso/record_interaction",   routing::post(handle_record_interaction))
         .with_state(cso);
