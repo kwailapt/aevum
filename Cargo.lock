@@ -18,8 +18,13 @@ version = "0.1.0"
 dependencies = [
  "aevum-core",
  "agent-card",
+ "autopoiesis",
+ "bytes",
+ "dashmap",
+ "pacr-types",
  "serde",
  "serde_json",
+ "smallvec",
  "thiserror",
 ]
 

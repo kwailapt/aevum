@@ -36,6 +36,7 @@
 #![deny(clippy::all, clippy::pedantic)]
 
 pub mod distance_tax;
+pub mod merge;
 
 use std::collections::HashSet;
 use std::sync::Arc;

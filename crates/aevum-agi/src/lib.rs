@@ -39,6 +39,18 @@
 //!   of negative knowledge assets encoding hard-learned failures.  Every
 //!   validated parameter configuration that degraded Γ is crystallised into
 //!   a constraint row so the system cannot repeat the same mistake.
+//!
+//! - [`boundary_osmosis`] — osmotic pressure valve (∂ arm): probabilistically
+//!   rejects incoming records when memory pressure or inflow rate exceeds
+//!   metabolic capacity (Pillar II homeostasis).
+//!
+//! - [`causal_return`] — ρ(A→B) tracker: measures causal return rate per
+//!   (source, target) pair to identify Babel Tower signals (high Λ, zero Φ
+//!   contribution).
+//!
+//! - [`immune_response`] — flood-ban pipeline: converts [`FloodVerdict`]s
+//!   from the autopoiesis flood detector into append-only ban records in the
+//!   Rule-IR (Pillar I immune layer, irreversible).
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
@@ -57,6 +69,15 @@ pub mod pareto_mcts;
 #[cfg(feature = "genesis_node")]
 pub mod rule_ir;
 
+#[cfg(feature = "genesis_node")]
+pub mod boundary_osmosis;
+
+#[cfg(feature = "genesis_node")]
+pub mod causal_return;
+
+#[cfg(feature = "genesis_node")]
+pub mod immune_response;
+
 // Re-export top-level entry points so callers need only `use aevum_agi::*`.
 #[cfg(feature = "genesis_node")]
 pub use dual_engine::{DualEngine, DualEngineConfig, DualEngineStatus};
@@ -65,4 +86,14 @@ pub use dual_engine::{DualEngine, DualEngineConfig, DualEngineStatus};
 pub use pareto_mcts::{ParetoMcts, ParetoMctsConfig, TopologyAction};
 
 #[cfg(feature = "genesis_node")]
-pub use rule_ir::{ConstraintMatrix, RuleIr, RuleViolation};
+pub use rule_ir::{BanError, ConstraintMatrix, RuleIr, RuleViolation};
+
+#[cfg(feature = "genesis_node")]
+pub use boundary_osmosis::BoundaryOsmoticPressure;
+
+#[cfg(feature = "genesis_node")]
+pub use causal_return::CausalReturnTracker;
+
+#[cfg(feature = "genesis_node")]
+pub use immune_response::ImmuneResponse;
+

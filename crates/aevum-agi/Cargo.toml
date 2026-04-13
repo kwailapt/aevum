@@ -24,18 +24,23 @@ description = "Aevum AGI entity — ⟨Φ,∂⟩ dual engine, Pareto-MCTS, Rule-
 path = "src/lib.rs"
 
 # The entire crate is a no-op unless `genesis_node` is enabled.
-# aevum-core and agent-card are optional deps gated on genesis_node.
+# aevum-core, agent-card, and autopoiesis are optional deps gated on genesis_node.
 [features]
 default      = []
-genesis_node = ["dep:aevum-core", "dep:agent-card"]
+genesis_node = ["dep:aevum-core", "dep:agent-card", "dep:autopoiesis"]
 
 [dependencies]
 aevum-core  = { path = "../aevum-core",  optional = true }
 agent-card  = { path = "../agent-card",  optional = true }
+autopoiesis = { path = "../autopoiesis", optional = true }
 
 # Always-present utilities (zero weight when feature is off)
+pacr-types  = { path = "../pacr-types" }
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
 thiserror   = "1"
+dashmap     = "6"
+bytes       = "1"
+smallvec    = { version = "1", features = ["serde"] }
 
 [dev-dependencies]

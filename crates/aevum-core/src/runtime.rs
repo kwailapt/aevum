@@ -538,6 +538,68 @@ pub async fn merge_ledgers(src_dir: &Path, dst_dir: &Path) -> Result<u64, std::i
     Ok(added)
 }
 
+// ── Partition reunion ─────────────────────────────────────────────────────────
+
+/// Create a **reunion record** that marks the healing of a network partition.
+///
+/// The reunion record's Π predecessor set contains the remote tips returned
+/// by [`causal_dag::merge::merge_remote`] plus any ongoing local tip.
+/// It is the caller's responsibility to append this record to the DAG.
+///
+/// # Arguments
+///
+/// * `state`        — the shared runtime state (used for ID generation).
+/// * `remote_tips`  — causal IDs of the remote frontier after merge.
+/// * `local_tip`    — optional last-known local tip before the partition.
+///
+/// # Returns
+///
+/// A fully-formed [`PacrRecord`] with `payload = b"partition-reunion"`,
+/// zero-width Landauer cost (we measure the actual merge separately),
+/// and wide-CI resource estimates.
+pub fn create_reunion_record(
+    state: &RuntimeState,
+    remote_tips: &[CausalId],
+    local_tip: Option<CausalId>,
+) -> PacrRecord {
+    use pacr_types::ResourceTriple;
+
+    let id = state.next_id();
+
+    // Build predecessor set: remote tips + local tip (if any).
+    let mut predecessors: SmallVec<[CausalId; 4]> = remote_tips.iter().copied().collect();
+    if let Some(local) = local_tip {
+        if !predecessors.contains(&local) {
+            predecessors.push(local);
+        }
+    }
+
+    // Use conservative Landauer estimate: 8 bits minimum.
+    let lambda = landauer_compute(8);
+    let energy = Estimate {
+        point: lambda.point * 1e4,
+        lower: lambda.point * 1e3,
+        upper: lambda.point * 1e6,
+    };
+
+    PacrBuilder::new()
+        .id(id)
+        .predecessors(predecessors)
+        .landauer_cost(lambda)
+        .resources(ResourceTriple {
+            energy,
+            time:  Estimate { point: 1e-3, lower: 0.0, upper: 1e-1 },
+            space: Estimate { point: 0.0, lower: 0.0, upper: 1e12 },
+        })
+        .cognitive_split(CognitiveSplit {
+            statistical_complexity: Estimate::exact(0.0),
+            entropy_rate:           Estimate::exact(0.0),
+        })
+        .payload(Bytes::from_static(b"partition-reunion"))
+        .build()
+        .expect("reunion record has all required fields")
+}
+
 // ── Persistence helpers ───────────────────────────────────────────────────────
 
 /// Append a single PACR record as a JSON line to the ledger file.
@@ -777,5 +839,29 @@ mod tests {
         let dir = tempdir().unwrap();
         let result = read_status(dir.path()).await;
         assert!(result.is_none());
+    }
+
+    // ── create_reunion_record ─────────────────────────────────────────────────
+
+    #[test]
+    fn reunion_record_has_correct_predecessors() {
+        let state = RuntimeState::new();
+        let tip_a = CausalId(0xAAAA);
+        let tip_b = CausalId(0xBBBB);
+        let local = CausalId(0xCCCC);
+        let rec = create_reunion_record(&state, &[tip_a, tip_b], Some(local));
+        assert!(rec.predecessors.contains(&tip_a));
+        assert!(rec.predecessors.contains(&tip_b));
+        assert!(rec.predecessors.contains(&local));
+        assert_eq!(rec.payload, bytes::Bytes::from_static(b"partition-reunion"));
+    }
+
+    #[test]
+    fn reunion_record_deduplicates_local_tip_if_in_remote_tips() {
+        let state = RuntimeState::new();
+        let shared = CausalId(0xDDDD);
+        let rec = create_reunion_record(&state, &[shared], Some(shared));
+        // Should appear only once
+        assert_eq!(rec.predecessors.iter().filter(|&&id| id == shared).count(), 1);
     }
 }

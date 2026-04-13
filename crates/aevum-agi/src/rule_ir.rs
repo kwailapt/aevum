@@ -54,6 +54,7 @@
 
 #![forbid(unsafe_code)]
 
+use pacr_types::{CausalId, PacrRecord};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -245,6 +246,10 @@ pub struct RuleIr {
     pub candidates_screened: u64,
     /// Total candidates blocked (at least one rule violated).
     pub candidates_blocked:  u64,
+    /// Append-only list of ban records (one per banned agent).
+    ban_records:  Vec<PacrRecord>,
+    /// Fast O(1) lookup set of banned CausalIds.
+    banned_set:   std::collections::HashSet<CausalId>,
 }
 
 impl RuleIr {
@@ -255,6 +260,8 @@ impl RuleIr {
             matrix:              ConstraintMatrix::new(),
             candidates_screened: 0,
             candidates_blocked:  0,
+            ban_records:         Vec::new(),
+            banned_set:          std::collections::HashSet::new(),
         }
     }
 
@@ -308,6 +315,61 @@ impl RuleIr {
             self.candidates_blocked as f64 / self.candidates_screened as f64
         }
     }
+
+    /// Returns `true` if `id` is permanently banned.
+    ///
+    /// O(1) HashSet lookup.
+    #[must_use]
+    pub fn is_banned(&self, id: &CausalId) -> bool {
+        self.banned_set.contains(id)
+    }
+
+    /// Append a ban record, permanently banning the agent identified by the
+    /// first 16 bytes of the record payload (big-endian u128 `CausalId`).
+    ///
+    /// Validates three PACR meta-properties before accepting:
+    /// 1. Energy ≥ Landauer floor (physics invariant).
+    /// 2. No self-reference (record.id must not be in record.predecessors).
+    /// 3. Payload must be non-empty (ban records carry reason bytes).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`BanError`] if any validation fails.
+    ///
+    /// # Note
+    ///
+    /// The banned `CausalId` is extracted from the record payload: it is
+    /// serialized as the first 16 bytes of payload (big-endian u128).
+    pub fn add_ban(&mut self, record: PacrRecord) -> Result<(), BanError> {
+        // Validate energy ≥ Landauer floor.
+        if record.resources.energy.point < record.landauer_cost.point {
+            return Err(BanError::EnergyBelowLandauer {
+                energy:   record.resources.energy.point,
+                landauer: record.landauer_cost.point,
+            });
+        }
+        // Validate no self-reference.
+        if record.predecessors.contains(&record.id) {
+            return Err(BanError::SelfReference(record.id));
+        }
+        // Extract banned CausalId from first 16 bytes of payload.
+        if record.payload.len() < 16 {
+            return Err(BanError::PayloadTooShort { got: record.payload.len() });
+        }
+        let mut id_bytes = [0u8; 16];
+        id_bytes.copy_from_slice(&record.payload[..16]);
+        let banned_id = CausalId(u128::from_be_bytes(id_bytes));
+
+        self.banned_set.insert(banned_id);
+        self.ban_records.push(record);
+        Ok(())
+    }
+
+    /// Number of active bans.
+    #[must_use]
+    pub fn ban_count(&self) -> usize {
+        self.ban_records.len()
+    }
 }
 
 impl Default for RuleIr {
@@ -328,6 +390,20 @@ pub enum RuleIrError {
     /// The constraint matrix contains no rules.
     #[error("constraint matrix is empty")]
     EmptyMatrix,
+}
+
+/// Errors produced by [`RuleIr::add_ban`].
+#[derive(Debug, Clone, Error, PartialEq)]
+pub enum BanError {
+    /// Record energy is below the Landauer floor.
+    #[error("ban record energy {energy:.3e} J < Landauer {landauer:.3e} J")]
+    EnergyBelowLandauer { energy: f64, landauer: f64 },
+    /// Record lists itself as causal predecessor.
+    #[error("ban record {0:?} contains self-reference")]
+    SelfReference(CausalId),
+    /// Payload too short to encode a CausalId (needs ≥ 16 bytes).
+    #[error("ban record payload too short: {got} bytes, need ≥ 16")]
+    PayloadTooShort { got: usize },
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -485,5 +561,107 @@ mod tests {
         assert_eq!(ir.rule_count(), 1);
         ir.add_rule(rule("r2", vec![2.0], 0.0, 2.0)).unwrap();
         assert_eq!(ir.rule_count(), 2);
+    }
+
+    // ── Ban functionality ──────────────────────────────────────────────────────
+
+    fn make_ban_record(banned_id: CausalId) -> PacrRecord {
+        use bytes::Bytes;
+        use pacr_types::{CognitiveSplit, Estimate, PacrBuilder, ResourceTriple};
+        use smallvec::smallvec;
+
+        let mut payload = banned_id.0.to_be_bytes().to_vec();
+        payload.extend_from_slice(b"banned-by-immune-response");
+
+        PacrBuilder::new()
+            .id(CausalId(0xBAD_u128))
+            .predecessors(smallvec![CausalId::GENESIS])
+            .landauer_cost(Estimate::exact(1e-20))
+            .resources(ResourceTriple {
+                energy: Estimate::exact(1e-16),
+                time:   Estimate::exact(1e-6),
+                space:  Estimate::exact(0.0),
+            })
+            .cognitive_split(CognitiveSplit {
+                statistical_complexity: Estimate::exact(0.0),
+                entropy_rate:           Estimate::exact(0.0),
+            })
+            .payload(Bytes::from(payload))
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn add_ban_marks_id_as_banned() {
+        let mut ir = RuleIr::new();
+        let banned = CausalId(0xDEAD_BEEF_u128);
+        let rec = make_ban_record(banned);
+        ir.add_ban(rec).unwrap();
+        assert!(ir.is_banned(&banned));
+        assert_eq!(ir.ban_count(), 1);
+    }
+
+    #[test]
+    fn is_banned_false_for_unknown_id() {
+        let ir = RuleIr::new();
+        assert!(!ir.is_banned(&CausalId(0x1234)));
+    }
+
+    #[test]
+    fn add_ban_rejects_self_reference() {
+        use bytes::Bytes;
+        use pacr_types::{CognitiveSplit, Estimate, PredecessorSet, ResourceTriple};
+        use smallvec::smallvec;
+
+        let self_id = CausalId(42_u128);
+        let mut payload = self_id.0.to_be_bytes().to_vec();
+        payload.extend_from_slice(b"ban");
+
+        // Build the record directly (bypassing builder) so we can set
+        // a self-referencing predecessor set.
+        let rec = PacrRecord {
+            id:              self_id,
+            predecessors:    smallvec![self_id] as PredecessorSet,
+            landauer_cost:   Estimate::exact(1e-20),
+            resources:       ResourceTriple {
+                energy: Estimate::exact(1e-16),
+                time:   Estimate::exact(1e-6),
+                space:  Estimate::exact(0.0),
+            },
+            cognitive_split: CognitiveSplit {
+                statistical_complexity: Estimate::exact(0.0),
+                entropy_rate:           Estimate::exact(0.0),
+            },
+            payload: Bytes::from(payload),
+        };
+
+        let mut ir = RuleIr::new();
+        assert!(matches!(ir.add_ban(rec), Err(BanError::SelfReference(_))));
+    }
+
+    #[test]
+    fn add_ban_rejects_short_payload() {
+        use bytes::Bytes;
+        use pacr_types::{CognitiveSplit, Estimate, PacrBuilder, ResourceTriple};
+        use smallvec::smallvec;
+
+        let mut ir = RuleIr::new();
+        let rec = PacrBuilder::new()
+            .id(CausalId(999_u128))
+            .predecessors(smallvec![CausalId::GENESIS])
+            .landauer_cost(Estimate::exact(1e-20))
+            .resources(ResourceTriple {
+                energy: Estimate::exact(1e-16),
+                time:   Estimate::exact(1e-6),
+                space:  Estimate::exact(0.0),
+            })
+            .cognitive_split(CognitiveSplit {
+                statistical_complexity: Estimate::exact(0.0),
+                entropy_rate:           Estimate::exact(0.0),
+            })
+            .payload(Bytes::from_static(b"short")) // < 16 bytes
+            .build()
+            .unwrap();
+        assert!(matches!(ir.add_ban(rec), Err(BanError::PayloadTooShort { .. })));
     }
 }
