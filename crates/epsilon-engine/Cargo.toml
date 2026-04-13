@@ -1,0 +1,15 @@
+[package]
+name        = "epsilon-engine"
+version     = "0.1.0"
+edition     = "2021"
+description = "CSSR ε-machine inference — Pillar III: Cognitive Complexity (S_T, H_T)."
+
+# Pillar III. PACR field: Γ (CognitiveSplit).
+# Implements the full Causal State Splitting Reconstruction (CSSR) algorithm.
+# #![forbid(unsafe_code)] — pure math, no hardware access.
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+
+[dev-dependencies]
+proptest = "1"

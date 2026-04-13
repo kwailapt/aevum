@@ -34,7 +34,25 @@ The `crates/pacr-types/` at the workspace root is a **TypeScript** crate (bridge
 
 ## Build & Run Commands
 
-All commands run from `crates/aevum-core/`:
+**New workspace crates** (run from `aevum_workspace/`):
+
+```bash
+# Build all new crates
+cargo build
+
+# Run all tests (all workspace crates)
+cargo test --workspace
+
+# Run a specific new crate
+cargo test -p epsilon-engine
+cargo test -p causal-dag
+cargo test -p pacr-types
+
+# Lint
+cargo clippy --workspace -- -D warnings
+```
+
+**Legacy aevum-core service** (run from `crates/aevum-core/`):
 
 ```bash
 # Build (M1 Ultra — genesis_node)

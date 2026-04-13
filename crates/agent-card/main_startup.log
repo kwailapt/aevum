@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/Volumes/Aevum/Obsidian/Opus_agi/ai2ai/main.py", line 22, in <module>
-    from transport.server import app, registry
-  File "/Volumes/Aevum/Obsidian/Opus_agi/ai2ai/transport/server.py", line 63, in <module>
-    from reality_contract import (
-    ...<5 lines>...
-    )
-ModuleNotFoundError: No module named 'reality_contract'

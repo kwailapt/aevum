@@ -1,0 +1,122 @@
+{
+  "agent_id": "01HZQK3P8EMXR9V7T5N2W4J6C0",
+  "name": "Mistral-7B Language Agent",
+  "version": "1.0.0",
+  "capabilities": [
+    {
+      "id": "text.generate",
+      "description": "Generate coherent text given a prompt and optional system instruction. Supports streaming via SSE.",
+      "tags": ["llm", "text", "generation", "streaming"],
+      "input_schema": {
+        "type": "object",
+        "required": ["prompt"],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "User prompt to complete",
+            "maxLength": 32768
+          },
+          "system": {
+            "type": "string",
+            "description": "Optional system instruction",
+            "maxLength": 4096
+          },
+          "max_tokens": {
+            "type": "integer",
+            "description": "Maximum tokens to generate",
+            "minimum": 1,
+            "maximum": 4096,
+            "default": 512
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Sampling temperature (0 = deterministic)",
+            "minimum": 0.0,
+            "maximum": 2.0,
+            "default": 0.7
+          },
+          "stream": {
+            "type": "boolean",
+            "description": "If true, return tokens via SSE stream",
+            "default": false
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Generated text"
+          },
+          "finish_reason": {
+            "type": "string",
+            "enum": ["stop", "length", "error"],
+            "description": "Why generation stopped"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "description": "Total tokens consumed (prompt + completion)"
+          }
+        }
+      }
+    },
+    {
+      "id": "text.embed",
+      "description": "Compute dense vector embeddings for semantic search and similarity.",
+      "tags": ["llm", "embedding", "semantic-search"],
+      "input_schema": {
+        "type": "object",
+        "required": ["texts"],
+        "properties": {
+          "texts": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 8192 },
+            "maxItems": 256
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["embeddings"],
+        "properties": {
+          "embeddings": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": { "type": "number" }
+            },
+            "description": "One float32 vector per input text (dim: 4096)"
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": {
+    "protocol": "http",
+    "url": "https://llm.example.com/v1",
+    "health_url": "https://llm.example.com/health",
+    "auth": {
+      "scheme": "bearer",
+      "token_url": "https://auth.example.com/token"
+    }
+  },
+  "pricing": {
+    "base_cost_joules": 4.5e-18,
+    "estimated_latency_ms": 850.0,
+    "currency": "USD",
+    "cost_per_request": 0.0002
+  },
+  "metadata": {
+    "pacr:interaction_count": 184291,
+    "pacr:avg_latency_ms": 847.3,
+    "pacr:avg_cost_joules": 4.62e-18,
+    "pacr:reputation_score": 0.94,
+    "pacr:influence_rank": 0.038,
+    "pacr:critical_score": 0.021,
+    "model": "mistral-7b-instruct-v0.3",
+    "context_window_tokens": 32768,
+    "hardware": "NVIDIA A100 80GB"
+  }
+}

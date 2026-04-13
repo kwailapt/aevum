@@ -1,0 +1,139 @@
+{
+  "agent_id": "01J0MNPQ4RSTV8W2XY6Z3A7B5C1",
+  "name": "Code Review Agent",
+  "version": "1.0.0",
+  "capabilities": [
+    {
+      "id": "code.review",
+      "description": "Analyze source code for bugs, security issues, style violations, and logic errors. Returns structured findings with line references.",
+      "tags": ["code", "review", "static-analysis", "security", "quality"],
+      "input_schema": {
+        "type": "object",
+        "required": ["source", "language"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source code to review",
+            "maxLength": 65536
+          },
+          "language": {
+            "type": "string",
+            "description": "Programming language",
+            "enum": ["rust", "python", "typescript", "javascript", "go", "java", "c", "cpp"]
+          },
+          "focus": {
+            "type": "array",
+            "description": "Optional list of review aspects to focus on",
+            "items": {
+              "type": "string",
+              "enum": ["security", "performance", "correctness", "style", "tests"]
+            }
+          },
+          "context": {
+            "type": "string",
+            "description": "Optional description of what this code does",
+            "maxLength": 2048
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["issues", "summary"],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["severity", "message"],
+              "properties": {
+                "severity": {
+                  "type": "string",
+                  "enum": ["critical", "high", "medium", "low", "info"]
+                },
+                "category": {
+                  "type": "string",
+                  "enum": ["security", "performance", "correctness", "style", "tests"]
+                },
+                "line_start": { "type": "integer", "minimum": 1 },
+                "line_end": { "type": "integer", "minimum": 1 },
+                "message": { "type": "string" },
+                "suggestion": { "type": "string" }
+              }
+            }
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-paragraph executive summary of the review"
+          },
+          "score": {
+            "type": "integer",
+            "description": "Overall code quality score 0–100",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    {
+      "id": "code.diff_review",
+      "description": "Review a git diff or patch for correctness and risk before merging.",
+      "tags": ["code", "diff", "pr-review", "git"],
+      "input_schema": {
+        "type": "object",
+        "required": ["diff"],
+        "properties": {
+          "diff": {
+            "type": "string",
+            "description": "Unified diff (git diff output)",
+            "maxLength": 131072
+          },
+          "base_branch": {
+            "type": "string",
+            "description": "Base branch name for context",
+            "default": "main"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["verdict"],
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": ["approve", "request_changes", "comment"]
+          },
+          "issues": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "summary": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "endpoint": {
+    "protocol": "http",
+    "url": "https://code-review.example.com/api/v1",
+    "health_url": "https://code-review.example.com/health",
+    "auth": {
+      "scheme": "api_key",
+      "header": "X-API-Key"
+    }
+  },
+  "pricing": {
+    "base_cost_joules": 1.2e-18,
+    "estimated_latency_ms": 3200.0,
+    "currency": "USD",
+    "cost_per_request": 0.005
+  },
+  "metadata": {
+    "pacr:interaction_count": 29847,
+    "pacr:avg_latency_ms": 3150.0,
+    "pacr:avg_cost_joules": 1.21e-18,
+    "pacr:reputation_score": 0.91,
+    "pacr:influence_rank": 0.012,
+    "pacr:critical_score": 0.008,
+    "supported_languages": ["rust", "python", "typescript", "javascript", "go", "java", "c", "cpp"],
+    "max_file_lines": 2000
+  }
+}

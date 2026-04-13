@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentCard — Semantic Waist of A2A</title>
+<style>
+  body { font-family: monospace; max-width: 800px; margin: 60px auto; padding: 0 20px; background: #0d0d0d; color: #e0e0e0; }
+  h1 { color: #fff; font-size: 1.8em; border-bottom: 1px solid #333; padding-bottom: 16px; }
+  h2 { color: #aaa; font-size: 1.1em; font-weight: normal; margin-top: 0; }
+  a { color: #7eb8f7; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 40px 0; }
+  .link-card { border: 1px solid #333; padding: 16px; border-radius: 4px; }
+  .link-card:hover { border-color: #555; }
+  .tag { font-size: 0.75em; color: #666; }
+  code { background: #1a1a1a; padding: 2px 6px; border-radius: 3px; color: #7eb8f7; }
+  footer { margin-top: 60px; color: #444; font-size: 0.85em; border-top: 1px solid #222; padding-top: 20px; }
+</style>
+</head>
+<body>
+<h1>AgentCard</h1>
+<h2>AgentCard is to A2A what HTTP headers are to the web.</h2>
+<p>A standardized, machine-parseable declaration of agent identity and capability.<br>
+Pure data schema. Zero execution logic. Works with any framework.</p>
+
+<div class="links">
+  <a class="link-card" href="schema.json">
+    <div>schema.json</div>
+    <div class="tag">JSON Schema Draft 2020-12 · v1.0</div>
+  </a>
+  <a class="link-card" href="https://github.com/kwailapt/AgentCard">
+    <div>GitHub</div>
+    <div class="tag">Source · Apache 2.0</div>
+  </a>
+  <a class="link-card" href=".well-known/agent.json">
+    <div>.well-known/agent.json</div>
+    <div class="tag">Discovery endpoint</div>
+  </a>
+  <a class="link-card" href="https://github.com/kwailapt/AgentCard/tree/main/validators">
+    <div>Validators</div>
+    <div class="tag">Rust · Python · Node</div>
+  </a>
+</div>
+
+<p>Pricing in <code>Joules</code> — thermodynamic settlement.<br>
+Metadata via <code>π-projection</code> from PACR causal history, not self-reported.</p>
+
+<footer>
+  AgentCard v1.0 · <a href="https://aevum.network">aevum.network</a> · Apache 2.0
+</footer>
+</body>
+</html>
