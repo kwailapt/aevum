@@ -347,7 +347,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| 0 | pacr-types (Estimate, ETS, Landauer, Complexity, Record) | ⬜ |
+| 0 | pacr-types (Estimate, ETS, Landauer, Complexity, Record) | ✅ |
 | 1 | causal-dag (lock-free DAG) | ⬜ |
 | 2 | ets-probe + landauer-probe (hardware measurement) | ⬜ |
 | 3 | epsilon-engine (CSSR ε-machine) | ⬜ |
