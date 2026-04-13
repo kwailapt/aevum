@@ -23,6 +23,7 @@
 
 pub mod allocator;
 pub mod cso;
+pub mod pressure_gauge;
 pub mod router;
 pub mod runtime;
 

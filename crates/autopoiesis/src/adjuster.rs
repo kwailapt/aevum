@@ -41,6 +41,12 @@ pub enum CognitiveRegime {
     SteadyState,
     /// Insufficient data or all-None series — regime undetermined.
     Undetermined,
+    /// S_T↓ rapidly + inflow rate spike + source concentration > threshold.
+    ///
+    /// Indicates a flood attack: many structurally similar packets from few
+    /// sources.  Set by [`flood_detector::FloodDetector`] when source
+    /// concentration exceeds its configured threshold.
+    FloodDetected,
 }
 
 // ── AdjustmentProposal ────────────────────────────────────────────────────────
@@ -164,6 +170,11 @@ pub fn propose(regime: CognitiveRegime, _current_depth: usize, current_alpha: f6
             regime,
             action: AdjustmentAction::EnterDormancy,
             rationale: "Insufficient Γ_k data: enter dormancy until window fills.".into(),
+        },
+        CognitiveRegime::FloodDetected => AdjustmentProposal {
+            regime,
+            action: AdjustmentAction::EnterDormancy,
+            rationale: "Flood attack detected: enter dormancy and activate immune response.".into(),
         },
     }
 }

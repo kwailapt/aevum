@@ -30,6 +30,8 @@ use causal_dag::CausalDag;
 use pacr_types::{CausalId, PacrRecord};
 use thiserror::Error;
 
+use crate::pressure_gauge::ThermodynamicPressureGauge;
+
 // ── Rejection reasons ─────────────────────────────────────────────────────────
 
 /// Why a record was rejected by the router.
@@ -44,6 +46,10 @@ pub enum RejectionReason {
     /// Landauer cost is negative — energy is non-negative by definition.
     #[error("TGP: Landauer cost is negative ({value:.3e} J)")]
     NegativeLandauer { value: f64 },
+
+    /// Accumulated Λ throughput exceeds the thermodynamic pressure budget.
+    #[error("TGP: thermodynamic pressure budget exceeded (throttled)")]
+    ThrottleExceeded,
 
     /// Elapsed time is negative — time is non-negative by definition.
     #[error("TGP: elapsed time is negative ({value:.3e} s)")]
@@ -95,15 +101,30 @@ impl RouterDecision {
 /// Three-layer envelope defense router.
 ///
 /// Holds a shared reference to the causal DAG for Layer 2 predecessor checks.
+/// Layer 1.5: thermodynamic pressure gauge — rejects envelopes when aggregate
+/// Λ throughput exceeds the configured power budget.
 pub struct Router {
-    dag: Arc<CausalDag>,
+    dag:            Arc<CausalDag>,
+    pressure_gauge: ThermodynamicPressureGauge,
 }
 
 impl Router {
     /// Creates a new router backed by the given causal DAG.
+    ///
+    /// Pressure gauge defaults to `max_watts = f64::MAX` (no throttling),
+    /// preserving backward compatibility with existing call sites.
     #[must_use]
     pub fn new(dag: Arc<CausalDag>) -> Self {
-        Self { dag }
+        Self {
+            dag,
+            pressure_gauge: ThermodynamicPressureGauge::new(f64::MAX, 1.0),
+        }
+    }
+
+    /// Creates a router with an explicit thermodynamic pressure gauge.
+    #[must_use]
+    pub fn with_pressure_gauge(dag: Arc<CausalDag>, gauge: ThermodynamicPressureGauge) -> Self {
+        Self { dag, pressure_gauge: gauge }
     }
 
     /// Validate a PACR record through all three layers.
@@ -115,6 +136,11 @@ impl Router {
         // ── Layer 1: TGP Physical Frame ───────────────────────────────────────
         if let Some(reason) = check_tgp(record) {
             return RouterDecision::Rejected(reason);
+        }
+
+        // ── Layer 1.5: Thermodynamic Pressure ────────────────────────────────
+        if self.pressure_gauge.should_throttle(record.landauer_cost.point) {
+            return RouterDecision::Rejected(RejectionReason::ThrottleExceeded);
         }
 
         // ── Layer 2: CTP Causal Frame ─────────────────────────────────────────

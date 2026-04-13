@@ -24,6 +24,7 @@
 
 pub mod adjuster;
 pub mod dormancy;
+pub mod flood_detector;
 pub mod gamma_calculator;
 
 use std::sync::Arc;
