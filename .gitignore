@@ -1,0 +1,23 @@
+# Rust
+target/
+*.bin
+*.bin.bak*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.log
+
+# 數據文件
+*.jsonl
+agi_workspace/
+candidate_pool/
+processing_factory/
+
+# macOS
+.DS_Store
+
+# IDE
+.obsidian/
+.qwen/
