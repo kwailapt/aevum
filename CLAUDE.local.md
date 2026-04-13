@@ -352,7 +352,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 | 2 | ets-probe + landauer-probe (hardware measurement) | ✅ |
 | 3 | epsilon-engine (CSSR ε-machine) | ✅ |
 | 4 | autopoiesis + pacr-bridge (feedback loop) | ✅ |
-| 5 | aevum-core runtime + CLI + 72h validation | ⬜ |
+| 5 | aevum-core runtime + CLI + 72h validation | ✅ |
 | 6 | agent-card schema + envelope wire format | ⬜ |
 | 7 | aevum-agi (⟨Φ,∂⟩ engine, genesis_node only) | ⬜ |
 
