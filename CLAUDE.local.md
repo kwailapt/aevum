@@ -40,6 +40,27 @@
 
 ---
 
+## §1a Immune System Invariant (NEVER disable any layer — constitutional)
+
+The system's survival depends on THREE PARALLEL immune layers.
+Disabling ANY ONE layer is as catastrophic as violating a Pillar.
+This section has the same authority as §1.
+
+| Layer | Location | Time Scale | Defends Against |
+|-------|----------|-----------|-----------------|
+| Pressure Gauge | aevum-core/pressure_gauge.rs | milliseconds | Thermodynamic overload (合法封包洪水) |
+| Osmotic Valve | aevum-agi/boundary_osmosis.rs | seconds | Memory exhaustion (OOM 吸收壁逼近) |
+| Cognitive Immune | autopoiesis/flood_detector.rs → aevum-agi/immune_response.rs | minutes | Structural attack (DAG 拓撲退化) |
+
+Rules:
+1. All three layers MUST be active in ANY production deployment. "Temporarily disable for testing" → use `#[cfg(test)]` feature flag, NEVER comment out.
+2. Pressure Gauge runs on BOTH genesis_node AND light_node (AWS + M1).
+3. Osmotic Valve + Cognitive Immune run ONLY on genesis_node (require AGI context).
+4. Immune response bans are APPEND-ONLY in Rule-IR. NO "unban" operation exists. If wrong, banned entity creates new CausalId and rebuilds ρ from zero.
+5. Each successful defense is itself a PACR record → Rule-IR negative asset → future immune memory. The system's defense strength compounds with time.
+
+---
+
 ## §2 PACR — The Immutable Schema (Day 0 Decision, NEVER modify semantics)
 
 PACR (Physically Annotated Causal Record) is a 6-tuple:
@@ -107,7 +128,8 @@ aevum_workspace/
 │   ├── causal-dag/                    # Lock-free append-only DAG (Pillar I)
 │   │   ├── Cargo.toml                 # depends on: pacr-types
 │   │   └── src/
-│   │       └── lib.rs                 # DashMap-based DAG, O(|Π|) append, O(1) lookup
+│   │       ├── lib.rs                 # DashMap-based DAG, O(|Π|) append, O(1) lookup
+│   │       └── distance_tax.rs        # 🔧 Causal distance tax (anti-star-graph, light-cone analog)
 │   │
 │   ├── ets-probe/                     # Hardware probes for (E, T, S) measurement (Pillar II)
 │   │   ├── Cargo.toml                 # depends on: pacr-types
@@ -140,7 +162,8 @@ aevum_workspace/
 │   │       ├── lib.rs
 │   │       ├── gamma_calculator.rs    # Γ_k ratio computation
 │   │       ├── adjuster.rs            # Parameter auto-tuning based on Γ
-│   │       └── dormancy.rs            # Dormancy judge
+│   │       ├── dormancy.rs            # Dormancy judge
+│   │       └── flood_detector.rs      # 🔧 Flood attack cognitive signature detection
 │   │
 │   ├── agent-card/                    # Semantic waist — pure schema, NO execution logic
 │   │   ├── Cargo.toml                 # depends on: pacr-types (for CausalId only)
@@ -154,16 +177,20 @@ aevum_workspace/
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── allocator.rs           # ★ Landauer-on-Drop hook (ONLY allowed unsafe in Core)
+│   │       ├── pressure_gauge.rs      # 🔧 Thermodynamic rate limiter (watts cap, both nodes)
 │   │       ├── runtime.rs             # tokio async main loop (3 tasks)
 │   │       ├── router.rs              # AgentCard-aware routing with Φ scoring + envelope defense
 │   │       └── cso.rs                 # Causal Settlement Oracle
 │   │
 │   └── aevum-agi/                     # Silicon life entity (ONLY on genesis_node)
-│       ├── Cargo.toml                 # depends on: aevum-core, agent-card
+│       ├── Cargo.toml                 # depends on: aevum-core, agent-card, autopoiesis
 │       └── src/
 │           ├── lib.rs
-│           ├── dual_engine.rs         # ⟨Φ, ∂⟩ engine — reads TGP, adjusts boundary
-│           ├── pareto_mcts.rs         # 80/20 topology tree (M1 Ultra UMA only)
+│           ├── dual_engine.rs         # ⟨Φ, ∂⟩ engine — core metabolism, Φ calculator
+│           ├── boundary_osmosis.rs    # ★ ∂ osmotic pressure valve (parasympathetic contraction)
+│           ├── causal_return.rs       # ★ ρ causal return rate tracker (Babel Tower defense)
+│           ├── immune_response.rs     # ★ Rule-IR flood ban trigger (append-only, irreversible)
+│           ├── pareto_mcts.rs         # 80/20 topology tree (M1 Ultra UMA only) — STUB
 │           └── rule_ir.rs             # Constraint matrix (negative knowledge assets)
 │
 ├── src/
@@ -347,48 +374,15 @@ If no physical law forces it → make it configurable, not hardcoded.
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| 0 | pacr-types (Estimate, ETS, Landauer, Complexity, Record) | ✅ |
-| 1 | causal-dag (lock-free DAG) | ✅ |
-| 2 | ets-probe + landauer-probe (hardware measurement) | ✅ |
-| 3 | epsilon-engine (CSSR ε-machine) | ✅ |
-| 4 | autopoiesis + pacr-bridge (feedback loop) | ✅ |
-| 5 | aevum-core runtime + CLI + 72h validation | ✅ |
-| 6 | agent-card schema + envelope wire format | ✅ |
-| 7 | aevum-agi (⟨Φ,∂⟩ engine, genesis_node only) | ✅ |
+| 0 | pacr-types (33 tests) | ✅ |
+| 1 | causal-dag (57 tests) + distance_tax extension | ✅ + 🔧 |
+| 2 | ets-probe (91 tests) | ✅ |
+| 3 | epsilon-engine (KAT ✅) | ✅ |
+| 4 | autopoiesis (42 tests) + flood_detector extension | ✅ + 🔧 |
+| 5 | aevum-core (206 tests) + pressure_gauge extension | ✅ + 🔧 |
+| 6 | agent-card (229 tests) + GitHub 🌐 | ✅ |
+| 7 | aevum-agi: dual_engine, boundary_osmosis, causal_return, immune_response, rule_ir, pareto_mcts(stub) | ⬜ |
 
-### Model Usage Policy（模型使用規範）
+🔧 = immune system extension (append-only, does not modify existing tests)
 
-- **Sonnet 4.6（預設 / 日常主力）**  
-  使用時機：90% 的日常工作（規劃、程式碼生成、refactor、debug、寫測試、迭代開發）。  
-  理由：速度快、成本低、品質已足夠專業。Sonnet 在多數 benchmark 上已接近 Opus 4.5/4.6 的程式碼品質，但便宜 5 倍以上。
-
-- **Opus 4.6（高階思考 / 關鍵時刻）**  
-  使用時機：  
-  • 專案初期架構設計、重大決策、重構多檔案系統  
-  • Sonnet 連續卡住 2-3 次相同問題  
-  • 安全審核、複雜演算法、跨模組相依性分析  
-  • 任何需要「高階推理」或「長上下文整體理解」的任務  
-  切換指令：`/model opus` 或使用 `opusplan` 模式（Opus 負責規劃 → 自動切回 Sonnet 執行）。
-
-- **Haiku 4.5（輕量 / 高速 / 子代理）**  
-  使用時機：  
-  • 簡單一鍵修改、格式化、檔案讀取、快速查詢  
-  • 子代理（sub-agent）任務  
-  • 高頻率、小型重複工作  
-  優點：極速且極便宜，適合 plan 模式下的執行階段。
-  
 Update this table after each phase completion: change ⬜ to ✅.
-
----
-
-## §8 實際物理拓撲（2026-04-14 確認）
-
-| 節點 | Tailscale IP | 角色 | 延遲 |
-|------|-------------|------|------|
-| M1 Ultra 128GB | 100.113.207.108 | Genesis Node | 本機 |
-| AWS Tokyo c7g | 100.116.253.50 | Membrane Router | ~54ms |
-| NAS 23TB | 100.82.176.54 | State Vault | ~2ms |
-
-- state_vault → /Volumes/Aevum/aevum_state_vault（外部 SSD）
-- NAS 內網：192.168.3.54（低延遲本地訪問）
-- 所有節點通過 Tailscale WireGuard 加密互聯
