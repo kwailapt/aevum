@@ -1,1 +1,0 @@
-/home/ec2-user/aevum-tokyo/tokio_clearinghouse/target/aarch64-unknown-linux-musl/release/tokio_clearinghouse: /home/ec2-user/aevum-tokyo/tokio_clearinghouse/src/main.rs
