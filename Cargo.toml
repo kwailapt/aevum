@@ -16,6 +16,8 @@ members = [
     ".",
     "crates/pacr-types",
     "crates/causal-dag",
+    "crates/landauer-probe",
+    "crates/ets-probe",
 ]
 resolver = "2"
 
