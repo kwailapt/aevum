@@ -13,3 +13,4 @@ pacr-types = { path = "../pacr-types" }
 
 [dev-dependencies]
 proptest = "1"
+approx   = "0.5"
