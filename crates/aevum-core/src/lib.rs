@@ -42,7 +42,7 @@ static ALLOCATOR: allocator::LandauerAllocator = allocator::LandauerAllocator;
 // ── Re-exports ────────────────────────────────────────────────────────────────
 
 pub use allocator::{bits_erased, landauer_cost_joules};
-pub use cso::CausalSettlementOracle;
+pub use cso::{CausalSettlementOracle, CsoIndex};
 pub use router::Router;
 pub use runtime::{
     RuntimeConfig, RuntimeState, RuntimeStatus,

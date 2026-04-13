@@ -1,6 +1,6 @@
 //! Pillar: ALL. PACR field: ALL.
 //!
-//! **Aevum Core tokio Runtime** — three concurrent async tasks:
+//! **Aevum Core tokio Runtime** — four concurrent async tasks:
 //!
 //! ```text
 //! Task 1: RecordProducer  — periodic PACR record generation
@@ -8,6 +8,7 @@
 //! Task 2: EpsilonWorker   — batches H_T values → runs infer_fast()
 //!                           → emits (C_μ, H_T) Snapshots
 //! Task 3: AutopoiesisTask — drives AutopoiesisLoop::step() on each Snapshot
+//! Task 4: CsoHttpServer   — optional axum HTTP server for CSO endpoints
 //! ```
 //!
 //! Persistence: each PACR record is appended as a JSON line to
@@ -27,6 +28,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use autopoiesis::{AutopoiesisConfig, AutopoiesisLoop, Snapshot, StepOutcome};
+use axum::{Router, routing};
 use bytes::Bytes;
 use causal_dag::CausalDag;
 use epsilon_engine::{infer_fast, Config as EpsilonConfig};
@@ -38,10 +40,14 @@ use pacr_types::{
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use tokio::io::AsyncWriteExt;
+use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::time::{Duration, interval};
 
 use crate::allocator::bits_erased;
+use crate::cso::{
+    CsoIndex, handle_get_leaderboard, handle_get_reputation, handle_record_interaction,
+};
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -60,6 +66,8 @@ pub struct RuntimeConfig {
     pub epsilon_interval_ms: u64,
     /// Interval between Autopoiesis ticks (milliseconds).
     pub autopoiesis_interval_ms: u64,
+    /// TCP port for the CSO HTTP server.  `None` disables the HTTP server.
+    pub cso_http_port: Option<u16>,
 }
 
 impl Default for RuntimeConfig {
@@ -71,6 +79,7 @@ impl Default for RuntimeConfig {
             producer_interval_ms:   100,
             epsilon_interval_ms:    500,
             autopoiesis_interval_ms: 2_000,
+            cso_http_port:          None, // disabled by default (no port conflict in tests)
         }
     }
 }
@@ -104,6 +113,8 @@ pub struct RuntimeState {
     pub record_count: Arc<AtomicU64>,
     /// Sequence counter for generating unique CausalIds.
     seq: Arc<AtomicU64>,
+    /// CSO reputation index — lock-free (DashMap-based).
+    pub cso: Arc<CsoIndex>,
 }
 
 impl RuntimeState {
@@ -114,6 +125,7 @@ impl RuntimeState {
             dag:          Arc::new(CausalDag::new()),
             record_count: Arc::new(AtomicU64::new(0)),
             seq:          Arc::new(AtomicU64::new(1)),
+            cso:          Arc::new(CsoIndex::new()),
         }
     }
 
@@ -378,13 +390,14 @@ async fn run_autopoiesis(
 
 /// Start the Aevum Core runtime.
 ///
-/// Spawns three background tasks and returns immediately.
-/// The caller is responsible for keeping the tokio runtime alive
-/// (e.g. via `ctrl-c` signal or a `JoinSet`).
+/// Spawns three background tasks (plus an optional CSO HTTP server task) and
+/// returns immediately.  The caller is responsible for keeping the tokio
+/// runtime alive (e.g. via `ctrl-c` signal or a `JoinSet`).
 ///
 /// # Errors
 ///
-/// Returns an error if the ledger directory cannot be created.
+/// Returns an error if the ledger directory cannot be created or (when
+/// `cso_http_port` is set) if the TCP listener cannot be bound.
 ///
 /// # Panics
 ///
@@ -430,10 +443,40 @@ pub async fn start(cfg: RuntimeConfig) -> Result<Arc<RuntimeState>, std::io::Err
         run_autopoiesis(s3, c3, gamma_rx, sp3).await;
     });
 
+    // Task 4 (optional): CSO HTTP server
+    if let Some(port) = cfg.cso_http_port {
+        let cso = Arc::clone(&state.cso);
+        let addr = format!("0.0.0.0:{port}");
+        let listener = TcpListener::bind(&addr).await?;
+        tokio::spawn(async move {
+            run_cso_http(cso, listener).await;
+        });
+    }
+
     Ok(state)
 }
 
 // ── CLI helpers ───────────────────────────────────────────────────────────────
+
+// ── Task 4: CSO HTTP server ───────────────────────────────────────────────────
+
+/// Serve the CSO reputation API on the given TCP listener.
+///
+/// Routes:
+/// - `GET  /cso/reputation/:agent_id`
+/// - `GET  /cso/leaderboard`
+/// - `POST /cso/record_interaction`
+async fn run_cso_http(cso: Arc<CsoIndex>, listener: TcpListener) {
+    let app = Router::new()
+        .route("/cso/reputation/:agent_id", routing::get(handle_get_reputation))
+        .route("/cso/leaderboard",          routing::get(handle_get_leaderboard))
+        .route("/cso/record_interaction",   routing::post(handle_record_interaction))
+        .with_state(cso);
+
+    if let Err(e) = axum::serve(listener, app).await {
+        eprintln!("[cso-http] server error: {e}");
+    }
+}
 
 /// Read the runtime status from `<ledger_dir>/status.json`.
 ///

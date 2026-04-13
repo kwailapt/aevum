@@ -15,6 +15,10 @@
 
 #![forbid(unsafe_code)]
 
+use std::sync::Arc;
+use std::collections::HashSet;
+
+use aevum_core::CsoIndex;
 use dashmap::DashMap;
 use pacr_types::CausalId;
 
@@ -107,6 +111,27 @@ impl CausalReturnTracker {
     #[must_use]
     pub fn pair_count(&self) -> usize {
         self.ema_map.len()
+    }
+
+    /// Push each tracked source agent's aggregate return rate into the CSO index.
+    ///
+    /// Iterates over all unique source agents in the map and calls
+    /// [`CsoIndex::update_rho`] with their current [`agent_return_rate`].
+    ///
+    /// Intended to be called periodically by the AGI dual-engine loop to
+    /// propagate observed causal efficiency into the global reputation index.
+    pub fn flush_to_cso(&self, cso: &Arc<CsoIndex>) {
+        // Collect unique source IDs without holding the DashMap shard lock.
+        let sources: HashSet<CausalId> = self
+            .ema_map
+            .iter()
+            .map(|e| e.key().0)
+            .collect();
+
+        for source in sources {
+            let rate = self.agent_return_rate(source);
+            cso.update_rho(source, rate);
+        }
     }
 }
 
