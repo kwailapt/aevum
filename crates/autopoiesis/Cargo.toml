@@ -1,0 +1,20 @@
+[package]
+name        = "autopoiesis"
+version     = "0.1.0"
+edition     = "2021"
+description = "Five-step self-modification feedback loop — Pillar ALL. PACR field: Γ."
+
+# Pillars: I (lock-free append), II (Landauer-aware proposals),
+#          III (cognitive regime diagnosis via ε-machine metrics).
+# #![forbid(unsafe_code)] — pure logic over PACR records.
+
+[dependencies]
+pacr-types    = { path = "../pacr-types" }
+causal-dag    = { path = "../causal-dag" }
+epsilon-engine = { path = "../epsilon-engine" }
+bytes         = "1"
+smallvec      = { version = "1", features = ["serde"] }
+thiserror     = "1"
+
+[dev-dependencies]
+proptest = "1"

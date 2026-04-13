@@ -19,6 +19,7 @@ members = [
     "crates/landauer-probe",
     "crates/ets-probe",
     "crates/epsilon-engine",
+    "crates/autopoiesis",
 ]
 resolver = "2"
 
