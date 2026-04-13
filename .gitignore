@@ -21,3 +21,4 @@ processing_factory/
 # IDE
 .obsidian/
 .qwen/
+state_vault/
