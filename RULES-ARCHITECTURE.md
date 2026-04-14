@@ -73,6 +73,8 @@
 - Defines: CSSR algorithm, symbolization, C_μ and h_μ computation
 - Known-Answer Tests: Even Process (2 states, C_μ=1.0 bit), Golden Mean Process
 - Memory constraint: ≤200 MiB for N=100K, L=12, |A|=8
+- **Quick Screen (O(1) pre-filter)**: `quick_screen.rs` computes Shannon entropy H(X) via 256-byte frequency table. If H(X) < threshold (near-deterministic data), skip full CSSR and emit S_T ≈ 0, H_T ≈ 0. This is NOT a replacement for CSSR — it is a cheap pre-filter that eliminates obviously dead data before expensive inference.
+- **Bootstrap Backend abstraction**: `bootstrap_backend.rs` defines `trait BootstrapBackend { fn resample_and_estimate(&self, data: &[u8], b: usize) -> Vec<f64>; }`. Current implementation: `CpuBootstrap`. Future: `MetalBootstrap` (Apple GPU parallel, genesis_node only). Zero-cost abstraction — no runtime overhead when using CpuBootstrap.
 
 ### pacr-ledger — "Immutable Archive"
 - Pillar: ALL. PACR field: ALL.
@@ -189,6 +191,16 @@ The system self-evolves via a disciplined 5-step feedback cycle:
    - S_T↑ H_T↑ = RegimeShift (prepare schema evolution)
    - S_T↓ H_T↓ = Convergence (possible overfitting)
    - S_T→ H_T→ = SteadyState (optimize waste)
+   - **d²S_T/dt² < 0 while S_T still rising = DeceleratingDiscovery** (learning curve bending — proactively pre-allocate alternative exploration paths before stagnation hits)
+   - S_T↓ + inflow spike + source concentration > threshold = FloodDetected (immune response)
 3. **PROPOSE**: Generate candidate schema extension or parameter adjustment.
 4. **VALIDATE**: Prove proposal doesn't violate any of 5 PACR meta-properties.
 5. **COMMIT**: Append proposal as a PACR record itself (self-referential closure).
+
+### Second-order derivative detection (DeceleratingDiscovery):
+The first-order slope tells you "S_T is rising". The second-order derivative tells you
+"S_T's rise is slowing down". This is the EARLIEST warning signal — it fires BEFORE
+stagnation, giving the ⟨Φ,∂⟩ engine time to pre-allocate resources for regime transition
+rather than reacting after the fact. Implementation: track slope_history across windows,
+compute acceleration = slope[n] - slope[n-1]. If acceleration < 0 and decreasing,
+fire DeceleratingDiscovery.

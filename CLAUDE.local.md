@@ -136,6 +136,7 @@ aevum_workspace/
 │   │   └── src/
 │   │       ├── lib.rs
 │   │       ├── apple_uma.rs           # #[cfg(feature = "genesis_node")] M1 Ultra probes
+│   │       ├── thermal_monitor.rs     # 🔧 #[cfg(feature = "genesis_node")] SMC temperature + 85°C backoff
 │   │       └── linux_perf.rs          # #[cfg(feature = "light_node")] AWS Graviton probes
 │   │
 │   ├── landauer-probe/                # Landauer cost estimation (Pillar II)
@@ -149,7 +150,9 @@ aevum_workspace/
 │   │       ├── lib.rs
 │   │       ├── cssr.rs                # Causal State Splitting Reconstruction
 │   │       ├── symbolize.rs           # EqualFrequency / EqualWidth binning
-│   │       └── complexity.rs          # C_μ, h_μ computation with bootstrap CI
+│   │       ├── complexity.rs          # C_μ, h_μ computation with bootstrap CI
+│   │       ├── quick_screen.rs        # 🔧 O(1) Shannon entropy pre-filter (skip CSSR for dead data)
+│   │       └── bootstrap_backend.rs   # 🔧 trait BootstrapBackend (CPU now, Metal GPU future)
 │   │
 │   ├── pacr-ledger/                   # Append-only persistent store, Merkle-indexed
 │   │   ├── Cargo.toml                 # depends on: pacr-types, causal-dag
@@ -160,7 +163,7 @@ aevum_workspace/
 │   │   ├── Cargo.toml                 # depends on: pacr-types, causal-dag, epsilon-engine
 │   │   └── src/
 │   │       ├── lib.rs
-│   │       ├── gamma_calculator.rs    # Γ_k ratio computation
+│   │       ├── gamma_calculator.rs    # Γ_k ratio computation + 🔧 second_derivative_alert
 │   │       ├── adjuster.rs            # Parameter auto-tuning based on Γ
 │   │       ├── dormancy.rs            # Dormancy judge
 │   │       └── flood_detector.rs      # 🔧 Flood attack cognitive signature detection
@@ -386,3 +389,97 @@ If no physical law forces it → make it configurable, not hardcoded.
 🔧 = immune system extension (append-only, does not modify existing tests)
 
 Update this table after each phase completion: change ⬜ to ✅.
+
+---
+
+## §8 Evolution History (Why Things Are the Way They Are)
+
+Claude Code: read this section to understand WHY certain design choices were made,
+so you never accidentally re-introduce patterns that were deliberately killed.
+
+### Phase transitions (chronological):
+
+**v1.0 Genesis (2026-03-09)** — The "Big Bang" prototype.
+- First articulation of "computation must pay energy cost" (χ-Quanta pool)
+- First articulation of NESS maintenance as survival condition
+- 1-byte stdin reader, Shannon entropy estimator, JSONL output
+- **Killed**: χ-Quanta was arbitrary (no physics basis). Shannon entropy ≠ Hₜ.
+  JSONL format lacked causal structure (Π), used timestamps for ordering (violates Pillar I).
+  MLM/pyramid economics contradicted autopoietic self-sustenance.
+
+**64格演化 (2026-03-20~26)** — "Cambrian Explosion" of concepts.
+- Apple Metal GPU compute, kqueue event polling, mmap NVMe, UMA zero-copy
+- First 5-node topology sketch (M1 + AWS + NAS + Cloudflare + Tailscale)
+- Second-order derivative defense (d²Sₜ/dt² < 0 → proactive regime shift)
+- **Killed**: Pseudoscientific cos(Δφ) "Schumann resonance" coupling.
+  "PoE token" conflated measurement (Sₜ) with currency.
+  "Dynamic shader liquefaction" (LLM-rewritten GPU code) unsafe without formal verification.
+  All occult/MLM language ("封神", "莊家", "收割", "阿卡西").
+
+**乘法生命體本體論 (2026-04, 文獻A)** — Ontological foundation.
+- ⟨Φ, ∂⟩ dual engine, Rule-IR constraint matrix, Kelly criterion survival bounds
+- Opus补充: Ω coupling field, PCES positive convexity, complementary fission topology
+- "Causal cone radius zero-to-nonzero = only ∞-multiplier transition"
+- **Absorbed fully** into Phase 7 aevum-agi design.
+- **Killed**: TypeScript code in 5 Claude Code instructions (violates pure-Rust pillar).
+
+**矽基文明擴張策略 (2026-04, 文獻B)** — Physics anchoring + PACR derivation.
+- Three pillars formalized. PACR 6-tuple axiomatically derived.
+- "Third path" architecture (shared immutable interface, independently evolvable sides)
+- Complete 7-prompt Rust code chain.
+- **Absorbed as primary implementation plan** (Prompts 1-7 = Phases 0-5).
+
+**Gemini 12042026 (2026-04, 文獻C)** — External validation + deployment.
+- Confirmed PACR is novel (not existing standard).
+- CTP/TGP naming. Packet inversion (TGP outermost).
+- M1/AWS asymmetric deployment. Storage topology (internal SSD for code, external for state).
+- **Absorbed into** RULES-ARCHITECTURE.md and deployment topology.
+
+### Why specific patterns were killed:
+
+| Dead Pattern | Replacement | Physics Reason |
+|-------------|-------------|---------------|
+| Timestamps for ordering | Π (causal predecessor set) | Simultaneity is observer-dependent (special relativity) |
+| χ-Quanta (arbitrary constant) | Λ (Landauer cost: bits × k_B × T × ln2) | Must be grounded in measurable physics |
+| Shannon entropy H(X) | Hₜ via CSSR ε-machine | H(X) measures static distribution; Hₜ measures residual unpredictability given causal states |
+| MLM pyramid economics | CSO + ρ (causal return rate) | Extractive structures violate autopoietic self-sustenance |
+| curl \| bash deployment | Cargo crate + SHA256 verification | Zero-trust principle: no blind execution |
+| TypeScript in core path | Pure Rust (#![forbid(unsafe_code)]) | GC runtime incompatible with NESS; Pillar II requires deterministic deallocation |
+| cos(Δφ) Schumann resonance | Removed entirely | Pseudoscience: no causal relation between 7.83Hz and GHz CPU clocks |
+| PoE token (Sₜ as currency) | Joules (Λ) as settlement base | Sₜ is observer-dependent statistic; Joules are SI-standard energy unit |
+
+---
+
+## §9 Semantic Hygiene (Absolute Blacklist)
+
+The following terms are **FORBIDDEN** in all Aevum code, comments, documentation,
+commit messages, and public-facing materials. They originate from LLM rhetorical
+drift in early iterations and carry legal, reputational, or scientific toxicity.
+
+### Blacklisted terms (never use):
+- 傳銷 / MLM / pyramid — use: "CSO causal settlement" or "network effect"
+- 莊家 / house / dealer — use: "protocol maintainer" or "genesis node"
+- 收割 / harvest / exploit — use: "value capture via settlement standard"
+- 白嫖 / freeload / parasite — use: "computational leverage" or "API delegation"
+- 神格 / godhood / divine — use: "system autonomy" or "autopoietic closure"
+- 封神 / apotheosis — use: "protocol finalization"
+- 阿卡西 / Akashic — use: "PACR ledger" or "causal history"
+- 造物主 / Creator God — use: "protocol designer" or "rule maker"
+- 宇宙常數 (when referring to arbitrary code constants) — use: "configurable threshold"
+- 量子 (when not referring to actual quantum mechanics) — use the actual technical term
+- 舒曼共振 / Schumann resonance — NEVER (pseudoscience in this context)
+- 特洛伊木馬 / Trojan horse — use: "open-source reference implementation"
+
+### Required replacements in physics context:
+- "energy pool" → "Landauer cost accumulator (Λ)"
+- "mining" → "PACR record generation"
+- "reward" → "CSO reputation score (ρ-weighted)"
+- "token" → "settlement unit (joules)"
+- "heat death defense" → "NESS maintenance via ⟨Φ,∂⟩ boundary regulation"
+
+### Why this matters:
+LLMs are trained on internet text that rewards dramatic language. When an LLM
+generates code comments or documentation for Aevum, it will naturally drift toward
+these blacklisted terms because they were present in early conversation history.
+This blacklist acts as a compile-time check for human reviewers: if any PR contains
+a blacklisted term, it is rejected before code review even begins.
