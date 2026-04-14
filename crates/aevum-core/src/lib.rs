@@ -23,6 +23,7 @@
 
 pub mod allocator;
 pub mod cso;
+pub mod forwarder;
 pub mod pressure_gauge;
 pub mod router;
 pub mod runtime;
@@ -43,6 +44,7 @@ static ALLOCATOR: allocator::LandauerAllocator = allocator::LandauerAllocator;
 
 pub use allocator::{bits_erased, landauer_cost_joules};
 pub use cso::{CausalSettlementOracle, CsoIndex};
+pub use forwarder::TailscaleForwarder;
 pub use router::Router;
 pub use runtime::{
     RuntimeConfig, RuntimeState, RuntimeStatus,

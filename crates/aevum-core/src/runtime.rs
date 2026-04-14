@@ -908,3 +908,156 @@ mod tests {
         assert_eq!(rec.predecessors.iter().filter(|&&id| id == shared).count(), 1);
     }
 }
+
+// ── light_node: Dumb Pipe path ────────────────────────────────────────────────
+//
+// On light_node the runtime does NOT maintain a causal-dag, does NOT run
+// epsilon inference, and does NOT run autopoiesis.  It is a stateless
+// thermodynamic filter + UDP forwarder (Dumb Pipe).
+//
+// Root cause of P0-1: the genesis_node `start()` path was used on light_node,
+// causing the DashMap-backed CausalDag to grow unbounded (~19 MiB/h).
+// These functions replace that path for `--features light_node` builds.
+
+/// Error type for the light_node envelope processing path.
+#[cfg(feature = "light_node")]
+#[derive(Debug)]
+pub enum ForwardError {
+    /// Raw bytes length is zero or exceeds UDP safe limit (65507 bytes).
+    PhysicsViolation,
+    /// Thermodynamic pressure budget exceeded; envelope dropped.
+    Throttled,
+    /// UDP socket or send error.
+    Io(std::io::Error),
+}
+
+#[cfg(feature = "light_node")]
+impl std::fmt::Display for ForwardError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PhysicsViolation => write!(f, "envelope length violates physical bounds"),
+            Self::Throttled        => write!(f, "thermodynamic pressure budget exceeded"),
+            Self::Io(e)            => write!(f, "UDP forward error: {e}"),
+        }
+    }
+}
+
+#[cfg(feature = "light_node")]
+impl From<std::io::Error> for ForwardError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+
+/// Process one raw envelope on the light_node Dumb Pipe path.
+///
+/// Pipeline: length check → pressure_gauge → UDP forward → Drop.
+/// No PacrRecord parsing, no DAG insert, no persistence.
+///
+/// Pillar: I (O(1), stateless). Pillar: II (pressure_gauge rate limit).
+#[cfg(feature = "light_node")]
+pub async fn process_envelope_light(
+    raw: &[u8],
+    gauge: &crate::pressure_gauge::ThermodynamicPressureGauge,
+    forwarder: &crate::forwarder::TailscaleForwarder,
+) -> Result<(), ForwardError> {
+    // Layer 1: physical bounds check (no parsing required).
+    // UDP payload max is 65507 bytes; zero-length is nonsensical.
+    if raw.is_empty() || raw.len() > 65_507 {
+        return Err(ForwardError::PhysicsViolation);
+    }
+
+    // Layer 1.5: thermodynamic pressure gate.
+    // Estimate Λ from raw byte count: bits × k_B × 300K × ln(2).
+    const K_B: f64 = 1.380_649e-23;
+    let lambda_j = raw.len() as f64 * 8.0 * K_B * 300.0 * std::f64::consts::LN_2;
+    if gauge.should_throttle(lambda_j) {
+        return Err(ForwardError::Throttled);
+    }
+
+    // Layer 2: forward raw bytes to genesis_node.
+    // raw drops at end of this function — no heap retention.
+    forwarder.forward(raw).await?;
+
+    Ok(())
+    // ← raw goes out of scope here; Rust Drop frees it immediately.
+    //   No DashMap insert. No PacrRecord allocation. No persistence.
+}
+
+/// Start the light_node runtime (Dumb Pipe mode).
+///
+/// Spawns only the CSO HTTP task (for reputation queries).
+/// Does NOT spawn producer, epsilon, or autopoiesis tasks.
+/// Steady-state RSS target: < 32 MiB.
+///
+/// # Errors
+///
+/// Returns an error if the TCP listener for CSO HTTP cannot be bound.
+#[cfg(feature = "light_node")]
+pub async fn start_light(cfg: RuntimeConfig) -> Result<Arc<RuntimeState>, std::io::Error> {
+    let state = Arc::new(RuntimeState::new());
+
+    // Only the CSO HTTP server runs on light_node (reputation queries).
+    if let Some(port) = cfg.cso_http_port {
+        let cso = Arc::clone(&state.cso);
+        let addr = format!("0.0.0.0:{port}");
+        let listener = TcpListener::bind(&addr).await?;
+        tokio::spawn(async move {
+            run_cso_http(cso, listener).await;
+        });
+    }
+
+    Ok(state)
+}
+
+#[cfg(all(test, feature = "light_node"))]
+mod light_node_tests {
+    use super::*;
+    use crate::forwarder::TailscaleForwarder;
+    use crate::pressure_gauge::ThermodynamicPressureGauge;
+
+    #[tokio::test]
+    async fn process_envelope_light_rejects_empty() {
+        let gauge = ThermodynamicPressureGauge::new(f64::MAX, 1.0);
+        let fwd = TailscaleForwarder::new("127.0.0.1", 19999);
+        let result = process_envelope_light(&[], &gauge, &fwd).await;
+        assert!(matches!(result, Err(ForwardError::PhysicsViolation)));
+    }
+
+    #[tokio::test]
+    async fn process_envelope_light_rejects_oversized() {
+        let gauge = ThermodynamicPressureGauge::new(f64::MAX, 1.0);
+        let fwd = TailscaleForwarder::new("127.0.0.1", 19999);
+        let big = vec![0u8; 65_508];
+        let result = process_envelope_light(&big, &gauge, &fwd).await;
+        assert!(matches!(result, Err(ForwardError::PhysicsViolation)));
+    }
+
+    #[tokio::test]
+    async fn process_envelope_light_throttles_when_budget_exceeded() {
+        // Tiny budget: 1e-30 W — exhaust it directly via the gauge,
+        // then verify process_envelope_light returns Throttled.
+        let gauge = ThermodynamicPressureGauge::new(1e-30, 1.0);
+        // Push well past budget without going through the forwarder.
+        gauge.should_throttle(1.0); // 1 J >> 1e-30 W·s budget
+        let fwd = TailscaleForwarder::new("127.0.0.1", 19999);
+        let result = process_envelope_light(b"hello", &gauge, &fwd).await;
+        assert!(matches!(result, Err(ForwardError::Throttled)));
+    }
+
+    #[tokio::test]
+    async fn process_envelope_light_forwards_to_loopback() {
+        use tokio::net::UdpSocket;
+        let listener = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let gauge = ThermodynamicPressureGauge::new(f64::MAX, 1.0);
+        let fwd = TailscaleForwarder::new("127.0.0.1", port);
+        let payload = b"pacr-envelope";
+        process_envelope_light(payload, &gauge, &fwd).await.unwrap();
+
+        let mut buf = [0u8; 64];
+        let (n, _) = listener.recv_from(&mut buf).await.unwrap();
+        assert_eq!(&buf[..n], payload);
+    }
+}

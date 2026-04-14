@@ -23,6 +23,7 @@ members = [
     "crates/aevum-core",
     "crates/agent-card",
     "crates/aevum-agi",
+    "crates/landauer-allocator",
 ]
 # Exclude the legacy nested crates inside crates/aevum-core/crates/ —
 # they are inert on disk and should not be discovered by the root workspace.
