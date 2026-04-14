@@ -47,6 +47,13 @@ pub enum CognitiveRegime {
     /// sources.  Set by [`flood_detector::FloodDetector`] when source
     /// concentration exceeds its configured threshold.
     FloodDetected,
+    /// Γ_k series has positive slope but with persistently negative second
+    /// derivative — discovery rate is decelerating.
+    ///
+    /// Set by [`GammaCalculator::second_derivative_alert`] when two consecutive
+    /// slope-of-slope values are both negative.  Triggers alpha relaxation to
+    /// explore a broader causal-state space before stagnation.
+    DeceleratingDiscovery,
 }
 
 // ── AdjustmentProposal ────────────────────────────────────────────────────────
@@ -175,6 +182,11 @@ pub fn propose(regime: CognitiveRegime, _current_depth: usize, current_alpha: f6
             regime,
             action: AdjustmentAction::EnterDormancy,
             rationale: "Flood attack detected: enter dormancy and activate immune response.".into(),
+        },
+        CognitiveRegime::DeceleratingDiscovery => AdjustmentProposal {
+            regime,
+            action: AdjustmentAction::RelaxAlpha { new_alpha: (current_alpha * 2.0).min(0.1) },
+            rationale: "Discovery rate decelerating (d²Γ/dt² < 0): relax α to explore broader causal-state space.".into(),
         },
     }
 }
@@ -436,6 +448,7 @@ mod tests {
             CognitiveRegime::Convergence,
             CognitiveRegime::SteadyState,
             CognitiveRegime::Undetermined,
+            CognitiveRegime::DeceleratingDiscovery,
         ] {
             let p = propose(regime, 4, 0.001);
             assert!(!p.rationale.is_empty(), "rationale must not be empty for {regime:?}");

@@ -49,6 +49,9 @@ mod apple_uma;
 #[cfg(feature = "light_node")]
 mod linux_perf;
 
+#[cfg(feature = "genesis_node")]
+pub mod thermal_monitor;
+
 use pacr_types::{Estimate, LandauerCost, ResourceTriple};
 use std::time::Instant;
 

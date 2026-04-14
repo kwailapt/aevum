@@ -34,6 +34,8 @@
 pub mod complexity;
 pub mod cssr;
 pub mod symbolize;
+pub mod quick_screen;
+pub mod bootstrap_backend;
 
 use complexity::{bootstrap_ci, compute_metrics, stationary_distribution};
 use cssr::run_cssr;

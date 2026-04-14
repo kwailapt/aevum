@@ -8,6 +8,10 @@ description = "CSSR ε-machine inference — Pillar III: Cognitive Complexity (S
 # Implements the full Causal State Splitting Reconstruction (CSSR) algorithm.
 # #![forbid(unsafe_code)] — pure math, no hardware access.
 
+[features]
+# M1 Ultra 128 GB UMA — enables MetalBootstrap stub in bootstrap_backend.rs.
+genesis_node = []
+
 [dependencies]
 pacr-types = { path = "../pacr-types" }
 

@@ -182,7 +182,15 @@ impl AutopoiesisLoop {
 
         // ── Step 2: DIAGNOSE ──────────────────────────────────────────────────
         let series = self.calc.gamma_series();
-        let regime = diagnose(&series, &self.diag_cfg);
+        let mut regime = diagnose(&series, &self.diag_cfg);
+
+        // ── Second-derivative override ────────────────────────────────────────
+        // If the discovery rate itself is decelerating (d²Γ/dt² < 0 persistently),
+        // upgrade regime to DeceleratingDiscovery regardless of primary diagnosis,
+        // so the adjuster can relax α before stagnation occurs.
+        if self.calc.second_derivative_alert() {
+            regime = CognitiveRegime::DeceleratingDiscovery;
+        }
 
         // ── Step 3: PROPOSE ───────────────────────────────────────────────────
         let proposal = propose(regime, self.depth, self.alpha);
