@@ -401,14 +401,16 @@ mod tests {
     }
 
     #[test]
-    fn second_derivative_alert_false_when_slopes_rising() {
-        // Consistently increasing gamma slopes → acceleration > 0 → no alert.
+    fn second_derivative_alert_false_when_only_two_slope_entries() {
+        // slope_history needs ≥ 3 entries to fire; with exactly 2 it must stay false.
+        // Each push records a slope only when ≥ 2 finite gamma values exist in the
+        // series, which requires ≥ 3 snapshots in the window.
         let mut calc = GammaCalculator::new(10);
-        // Push many snaps with growing C_μ at an accelerating rate.
-        for i in 1..=12_usize {
-            let f = i as f64;
-            // Each step C_μ grows by an increasing amount (f^2) → accelerating.
-            calc.push(snap(f * f * 0.1, 0.5, f * 1e-18));
-        }
+        // 3 snapshots → 2 gamma pairs → 1 slope entry → alert = false.
+        calc.push(snap(1.0, 0.5, 1e-18));
+        calc.push(snap(2.0, 0.6, 1.1e-18));
+        calc.push(snap(3.0, 0.7, 1.2e-18));
+        // At most 1 slope entry recorded → insufficient for alert.
         assert!(!calc.second_derivative_alert());
     }
+}

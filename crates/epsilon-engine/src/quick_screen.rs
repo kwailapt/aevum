@@ -87,7 +87,7 @@ impl ScreenResult {
 #[must_use]
 pub fn quick_screen(data: &[u8], threshold: f64) -> ScreenResult {
     let entropy_bits = byte_entropy(data);
-    if entropy_bits < threshold {
+    if entropy_bits <= threshold {
         ScreenResult::Skip { reason: "near-deterministic", entropy_bits }
     } else {
         ScreenResult::Proceed { entropy_bits }
