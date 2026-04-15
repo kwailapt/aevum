@@ -14,8 +14,17 @@ use serde::Deserialize;
 use aevum_core::runtime::{
     RuntimeConfig, export_ledger, merge_ledgers, read_status, start, verify_ledger,
 };
+#[cfg(feature = "light_node")]
+use aevum_core::{TailscaleForwarder, runtime::start_light};
 
 // ── Node config (light-node.toml) ─────────────────────────────────────────────
+
+/// `[forwarder]` section in `light-node.toml`.
+#[derive(Debug, Deserialize, Default)]
+struct ForwarderConfig {
+    genesis_tailscale_ip: String,
+    genesis_port: u16,
+}
 
 /// Subset of fields understood from a `light-node.toml` config file.
 ///
@@ -30,6 +39,8 @@ struct NodeConfig {
     max_threads:   Option<usize>,
     /// Ledger directory path.  Maps to `RuntimeConfig::ledger_dir`.
     ledger_path:   Option<String>,
+    /// Forwarder config (light_node only).
+    forwarder:     Option<ForwarderConfig>,
     // `feature` and other deployment-only keys are silently ignored.
 }
 
@@ -160,39 +171,72 @@ async fn cmd_run(mut args: Vec<String>) {
     };
 
     // 3. Overlay TOML config (if supplied).
-    let cfg = if let Some(ref path) = config_path {
+    // Keep node_cfg alive so light_node can read [forwarder] after apply().
+    let (cfg, node_cfg) = if let Some(ref path) = config_path {
         let node_cfg = NodeConfig::load(path);
-        node_cfg.apply(base, ledger_from_cli)
+        let cfg = node_cfg.apply(base, ledger_from_cli);
+        // Re-load to get forwarder field (apply() consumes node_cfg).
+        let node_cfg2 = NodeConfig::load(path);
+        (cfg, Some(node_cfg2))
     } else {
-        base
+        (base, None)
     };
 
-    eprintln!(
-        "aevum: starting runtime (ledger={}, cso_http_port={}, threads={}{})",
-        cfg.ledger_dir.display(),
-        cfg.cso_http_port
-            .map(|p| p.to_string())
-            .unwrap_or_else(|| "disabled".into()),
-        cfg.worker_threads,
-        config_path
-            .as_deref()
-            .map(|p| format!(", config={p}"))
-            .unwrap_or_default(),
-    );
-
-    let _state = match start(cfg).await {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("aevum: failed to start runtime: {e}");
+    // 4. light_node: Dumb Pipe path — zero DashMap, zero persistence.
+    #[cfg(feature = "light_node")]
+    {
+        let fwd_cfg = node_cfg
+            .and_then(|c| c.forwarder)
+            .unwrap_or_else(|| {
+                eprintln!("aevum: light_node requires [forwarder] section in --config");
+                std::process::exit(1);
+            });
+        let forwarder = TailscaleForwarder::new(
+            &fwd_cfg.genesis_tailscale_ip,
+            fwd_cfg.genesis_port,
+        );
+        eprintln!(
+            "aevum: light_node dumb-pipe starting (→ {}:{})",
+            fwd_cfg.genesis_tailscale_ip, fwd_cfg.genesis_port,
+        );
+        if let Err(e) = start_light(cfg, forwarder).await {
+            eprintln!("aevum: light_node failed: {e}");
             std::process::exit(1);
         }
-    };
+        return;
+    }
 
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to listen for ctrl-c");
+    // 5. genesis_node: full runtime path.
+    #[cfg(not(feature = "light_node"))]
+    {
+        let _ = node_cfg; // suppress unused warning on genesis builds
+        eprintln!(
+            "aevum: starting runtime (ledger={}, cso_http_port={}, threads={}{})",
+            cfg.ledger_dir.display(),
+            cfg.cso_http_port
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| "disabled".into()),
+            cfg.worker_threads,
+            config_path
+                .as_deref()
+                .map(|p| format!(", config={p}"))
+                .unwrap_or_default(),
+        );
 
-    eprintln!("aevum: shutdown signal received, exiting.");
+        let _state = match start(cfg).await {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("aevum: failed to start runtime: {e}");
+                std::process::exit(1);
+            }
+        };
+
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen for ctrl-c");
+
+        eprintln!("aevum: shutdown signal received, exiting.");
+    }
 }
 
 async fn cmd_status(mut args: Vec<String>) {

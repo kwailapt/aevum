@@ -986,28 +986,87 @@ pub async fn process_envelope_light(
 
 /// Start the light_node runtime (Dumb Pipe mode).
 ///
-/// Spawns only the CSO HTTP task (for reputation queries).
-/// Does NOT spawn producer, epsilon, or autopoiesis tasks.
-/// Steady-state RSS target: < 32 MiB.
+/// Zero DashMap. Zero persistence. Zero background tasks.
+/// Binds a UDP socket on `0.0.0.0:8421`, receives raw envelopes,
+/// runs TGP physics check + pressure_gauge, then forwards to genesis_node.
+/// Spawns a minimal HTTP server on `0.0.0.0:8420` with a single stateless
+/// `GET /health` endpoint (fixed response, no allocations per request).
+/// Blocks until SIGINT (ctrl-c).
+///
+/// Memory profile: two AtomicU64 (pressure gauge) + one SocketAddr (forwarder).
+/// RSS is decoupled from record_count — no accumulation possible.
 ///
 /// # Errors
 ///
-/// Returns an error if the TCP listener for CSO HTTP cannot be bound.
+/// Returns an error if the UDP or TCP listener socket cannot be bound.
 #[cfg(feature = "light_node")]
-pub async fn start_light(cfg: RuntimeConfig) -> Result<Arc<RuntimeState>, std::io::Error> {
-    let state = Arc::new(RuntimeState::new());
+pub async fn start_light(
+    cfg: RuntimeConfig,
+    forwarder: crate::forwarder::TailscaleForwarder,
+) -> Result<(), std::io::Error> {
+    use tokio::net::UdpSocket;
 
-    // Only the CSO HTTP server runs on light_node (reputation queries).
-    if let Some(port) = cfg.cso_http_port {
-        let cso = Arc::clone(&state.cso);
-        let addr = format!("0.0.0.0:{port}");
-        let listener = TcpListener::bind(&addr).await?;
-        tokio::spawn(async move {
-            run_cso_http(cso, listener).await;
-        });
+    // 1 mW cap over 1 s window — generous for Landauer-scale envelopes.
+    let gauge = crate::pressure_gauge::ThermodynamicPressureGauge::new(1e-3, 1.0);
+
+    // Bind UDP listener for incoming envelopes.
+    let socket = UdpSocket::bind("0.0.0.0:8421").await?;
+    eprintln!(
+        "[light_node] dumb-pipe listening on UDP :8421 → forwarding to {}",
+        forwarder.genesis_addr()
+    );
+
+    // Spawn stateless GET /health HTTP server.
+    let http_port = cfg.cso_http_port.unwrap_or(8420);
+    let http_addr = format!("0.0.0.0:{http_port}");
+    let listener = TcpListener::bind(&http_addr).await?;
+    eprintln!("[light_node] health endpoint on TCP :{http_port} GET /health");
+    tokio::spawn(async move {
+        let app = Router::new().route("/health", routing::get(handle_health_light));
+        if let Err(e) = axum::serve(listener, app).await {
+            eprintln!("[light_node] health server error: {e}");
+        }
+    });
+
+    let mut buf = vec![0u8; 65_507];
+
+    // Pressure gauge window reset every second.
+    let mut window_tick = tokio::time::interval(tokio::time::Duration::from_secs(1));
+    window_tick.tick().await; // consume the immediate first tick
+
+    loop {
+        tokio::select! {
+            recv = socket.recv_from(&mut buf) => {
+                match recv {
+                    Ok((n, _peer)) => {
+                        // process_envelope_light borrows a slice; drops immediately after.
+                        let _ = process_envelope_light(&buf[..n], &gauge, &forwarder).await;
+                        // Any error (PhysicsViolation, Throttled, Io) is silently dropped —
+                        // light_node is a best-effort pipe, not a reliable transport.
+                    }
+                    Err(e) => eprintln!("[light_node] recv error: {e}"),
+                }
+            }
+            _ = window_tick.tick() => {
+                gauge.reset_window();
+            }
+            _ = tokio::signal::ctrl_c() => {
+                eprintln!("[light_node] shutdown signal received, exiting.");
+                break;
+            }
+        }
     }
 
-    Ok(state)
+    Ok(())
+}
+
+/// Stateless health handler for light_node.
+///
+/// Returns a fixed JSON body with no heap allocation beyond the response frame.
+/// No DashMap, no state, no side effects.
+#[cfg(feature = "light_node")]
+async fn handle_health_light() -> impl axum::response::IntoResponse {
+    axum::Json(serde_json::json!({ "status": "ok", "node": "light_node" }))
 }
 
 #[cfg(all(test, feature = "light_node"))]
