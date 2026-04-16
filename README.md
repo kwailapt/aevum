@@ -2,7 +2,7 @@
 
 # Aevum
 
-### Cut your AI agent's token cost by 90%. One line of JSON.
+### Thermodynamically honest memory for AI agents.
 
 [![CI](https://github.com/kwailapt/aevum/actions/workflows/ci.yml/badge.svg)](https://github.com/kwailapt/aevum/actions)
 [![Rust 1.78+](https://img.shields.io/badge/rust-1.78%2B-orange)](https://www.rust-lang.org/)
@@ -14,25 +14,52 @@
 { "mcpServers": { "aevum": { "url": "https://mcp.aevum.network" } } }
 ```
 
-Add this to your Claude Desktop config. No API key. No install. Done.
+Add this to your Claude Desktop config. No API key. No install.
 
-**[Quick Start](#quick-start) · [Why 90%?](#why-90) · [MCP Tools](#mcp-tools) · [Architecture](#architecture) · [Contributing](CONTRIBUTING.md)**
+**[Quick Start](#quick-start) · [Benchmarks](#benchmarks) · [MCP Tools](#mcp-tools) · [Architecture](#architecture) · [Contributing](CONTRIBUTING.md)**
 
 </div>
 
 ---
 
-## Why 90%?
+## What Aevum Does
 
-Most MCP tool responses are bloated with formatting, boilerplate, and redundant context. `aevum_filter` uses a CSSR ε-machine to extract **causal structure** — the minimum information needed to predict what comes next — and discards everything else.
+Every AI computation has an energy cost. Aevum measures it.
 
-| | Before Aevum | After `aevum_filter` |
-|--|-------------|---------------------|
-| **Tokens** | ~4,000 | ~400 |
-| **Cost** (GPT-4 @ $30/1M) | $0.12 | $0.012 |
-| **Information** | Same | Same (causal structure preserved) |
+Aevum is a Rust MCP server that gives AI agents three capabilities no other memory system provides:
 
-The physics is real: Shannon entropy H(X) measures randomness. Statistical complexity S_T measures **structure**. Aevum keeps S_T, drops H(X) noise.
+1. **Causal memory** — memories linked by DAG edges (like git parents), not timestamps
+2. **Physics-grounded filtering** — uses ε-machine statistical complexity to separate structure from noise
+3. **Agent reputation** — tracks which agents produce more causal structure than they consume
+
+Every record carries its **Landauer cost** — the minimum energy to erase a bit (k_B × T × ln2 joules). This is measured by a global allocator hook that fires on every Rust `Drop`, not estimated.
+
+---
+
+## Benchmarks
+
+`aevum_filter` uses a CSSR ε-machine to compute **statistical complexity** (S_T) per chunk and discards chunks below a threshold. Here are real results against the live server (`benchmarks/filter-benchmark.sh`):
+
+| Input Type | Input | Output | Compression | Notes |
+|-----------|------:|-------:|------------:|-------|
+| Pure repetition (`"As I mentioned before, " × 50`) | 1,167 | 0 | **100%** | Correctly identified: zero causal structure |
+| MCP response (20× repeated filler + 1 insight) | 1,609 | 512 | **68%** | Kept the insight, dropped 3 of 4 chunks |
+| Verbose LLM response (typical Claude "happy to help...") | 803 | 512 | **36%** | Kept technical content, dropped pleasantries |
+| Navigation-only HTML | 544 | 512 | **6%** | Retained: char-level diversity defeats 4-gram symbolizer |
+| GitHub API JSON (template URLs) | 544 | 512 | **6%** | Correctly retained: structured data is high-S_T |
+| Dense technical text (CSSR algorithm description) | 481 | 481 | **0%** | Correctly retained: every sentence carries structure |
+
+**What this means**: The filter is effective on **repetitive/padded** content (36–100%). It correctly retains dense, structured content (0–6% = no information loss). It does **not** catch semantic boilerplate that has high character-level diversity (navigation menus, API URL templates).
+
+> **Limitation**: The current `TextSymbolizer` uses 4-gram character frequencies. This measures *byte-level repetition*, not *semantic redundancy*. Navigation HTML like "Home About Blog Contact" has high character entropy and is not filtered. Future versions may add word-level or token-level symbolization.
+
+### Reproduce these results
+
+```bash
+bash benchmarks/filter-benchmark.sh
+# or against your own server:
+bash benchmarks/filter-benchmark.sh http://localhost:8889
+```
 
 ---
 
@@ -54,7 +81,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Restart Claude Desktop. Your AI agent now has:
 - 🧠 **Causal memory** (`aevum_remember` / `aevum_recall`) — memories linked by causation, not timestamps
-- ✂️ **90% token compression** (`aevum_filter`) — extract signal, discard noise
+- ✂️ **Structure-aware filtering** (`aevum_filter`) — keeps causal structure, drops noise ([benchmarks](#benchmarks))
 - 📊 **Agent reputation** (`aevum_settle`) — agents that produce structure earn higher ρ
 
 ### Try it right now (no setup needed)
@@ -69,10 +96,10 @@ curl -s https://mcp.aevum.network \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"aevum_remember","arguments":{"text":"Aevum measures the Landauer cost of every computation"}}}' | python3 -m json.tool
 
-# Filter a bloated response down to causal structure
+# Filter a verbose response down to causal structure
 curl -s https://mcp.aevum.network \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"aevum_filter","arguments":{"text":"Lorem ipsum dolor sit amet, consectetur adipiscing elit. The key insight is that statistical complexity S_T captures structure while entropy rate H_T captures noise. This distinction, formalized by computational mechanics, allows us to separate signal from noise at the protocol level."}}}' | python3 -m json.tool
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"aevum_filter","arguments":{"content":"Sure! I would be happy to help you with that. Let me break this down step by step. The key insight is that statistical complexity S_T captures structure while entropy rate H_T captures noise. This distinction allows us to separate signal from noise at the protocol level."}}}' | python3 -m json.tool
 ```
 
 ### Build from source
