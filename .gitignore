@@ -5,7 +5,9 @@ target/
 
 # ── Secrets / private context (NEVER commit) ─────────────────────────────────
 .env
+CLAUDE.md
 CLAUDE.local.md
+DECISION-LOG.md
 *.pem
 *.key
 
@@ -45,3 +47,11 @@ candidate_pool/
 processing_factory/
 state_vault/
 checkpoint.txt
+
+# ── Legacy prototypes (pre-dates Phase 0 rewrite) ────────────────────────────
+crates/aevum-core/genesis/
+crates/aevum-core/ledger-core/
+crates/aevum-core/tokio_clearinghouse/
+crates/aevum-core/*_lib.rs
+crates/aevum-core/snapshot.sh
+crates/aevum-core/src/main_legacy.rs
