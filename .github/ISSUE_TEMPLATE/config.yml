@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: MCP Live Server
+    url: https://mcp.aevum.network
+    about: Connect your AI agent to the live Aevum MCP endpoint — no API key required.
+  - name: PACR Specification
+    url: https://github.com/kwailapt/aevum/blob/main/RULES-PACR.md
+    about: Read the formal PACR 6-tuple specification before proposing schema changes.

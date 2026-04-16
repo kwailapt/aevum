@@ -1,0 +1,62 @@
+name: Bug Report
+description: Report a bug in Aevum
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting. Please include which Pillar (I/II/III) is affected.
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Affected Pillar
+      options:
+        - "I — Hyperscale (performance, lock-free, O(n))"
+        - "II — Thermodynamics (Landauer, energy, NESS)"
+        - "III — Cognitive Complexity (ε-machine, S_T, H_T)"
+        - "Infrastructure (MCP server, transport, deployment)"
+    validations:
+      required: true
+  - type: dropdown
+    id: crate
+    attributes:
+      label: Affected Crate
+      options:
+        - pacr-types
+        - causal-dag
+        - epsilon-engine
+        - ets-probe
+        - landauer-probe
+        - landauer-allocator
+        - pacr-ledger
+        - autopoiesis
+        - aevum-core
+        - agent-card
+        - aevum-mcp-server
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal reproduction steps or test case.
+    validations:
+      required: true
+  - type: input
+    id: rust-version
+    attributes:
+      label: Rust Version
+      placeholder: "e.g. 1.78.0"
+  - type: input
+    id: os
+    attributes:
+      label: OS / Platform
+      placeholder: "e.g. macOS 15.4 / aarch64, Ubuntu 24.04 / Graviton"

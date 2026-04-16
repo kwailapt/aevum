@@ -1,0 +1,45 @@
+name: Feature Request
+description: Propose a new feature or improvement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before proposing, ask: "Which physical law forces this choice?"
+        If no law forces it → make it configurable, not hardcoded.
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Related Pillar
+      options:
+        - "I — Hyperscale"
+        - "II — Thermodynamics"
+        - "III — Cognitive Complexity"
+        - "Cross-cutting (multiple pillars)"
+        - "Infrastructure / DX"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What do you want to add or change? Why is it physically necessary?
+    validations:
+      required: true
+  - type: textarea
+    id: pacr-impact
+    attributes:
+      label: PACR Impact
+      description: Which PACR fields (ι, Π, Λ, Ω, Γ, P) does this affect?
+    validations:
+      required: false
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking Change?
+      options:
+        - "No"
+        - "Yes — requires migration"
+    validations:
+      required: true
