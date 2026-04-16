@@ -1,6 +1,6 @@
 [package]
 name          = "epsilon-engine"
-version       = "0.1.0"
+version       = "0.1.0-alpha.1"
 edition       = "2021"
 description   = "CSSR ε-machine: statistical complexity S_T and entropy rate H_T from data streams."
 license       = "Apache-2.0"

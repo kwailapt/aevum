@@ -8,6 +8,10 @@ Part of the [Aevum](https://github.com/kwailapt/aevum) physics kernel.
 [![docs.rs](https://img.shields.io/docsrs/epsilon-engine)](https://docs.rs/epsilon-engine)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](../../LICENSE)
 
+> **Status: `0.1.0-alpha.1`** — The CSSR algorithm and S_T/H_T computation are stable.
+> The `TextSymbolizer` (4-gram character frequencies) does not yet capture semantic redundancy.
+> Word-level symbolization is planned for `0.1.0`. Use in production with that limitation in mind.
+
 ## What It Is
 
 An implementation of **Causal State Splitting Reconstruction (CSSR)** — the algorithm that infers a minimal ε-machine from a data stream and computes:
