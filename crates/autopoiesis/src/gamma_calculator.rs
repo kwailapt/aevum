@@ -1,18 +1,15 @@
 //! Pillar: II + III.  PACR field: Γ, Λ.
 //!
-//! Step 1 – OBSERVE: sliding-window aggregation of (S_T, H_T, Λ) snapshots.
-//! Step 3 – PROPOSE metric: Γ_k = (ΔC_μ,k / C̄_μ,k) / (ΔΛ_k / Λ̄_k)
+//! Step 1 – OBSERVE: sliding-window aggregation of (`S_T`, `H_T`, Λ) snapshots.
+//! Step 3 – PROPOSE metric: `Γ_k` = (`ΔC_μ,k` / `C̄_μ,k`) / (`ΔΛ_k` / `Λ̄_k`)
 //!
 //! Physical interpretation:
-//! - Γ_k > 1 : cognition improves faster than thermodynamic cost grows — healthy.
-//! - Γ_k ≈ 1 : neutral equilibrium.
-//! - Γ_k < 0 : cognition degrades while cost grows — wasteful.
-//! - Γ_k = None: insufficient data or denominator degenerate.
+//! - `Γ_k` > 1 : cognition improves faster than thermodynamic cost grows — healthy.
+//! - `Γ_k` ≈ 1 : neutral equilibrium.
+//! - `Γ_k` < 0 : cognition degrades while cost grows — wasteful.
+//! - `Γ_k` = None: insufficient data or denominator degenerate.
 //!
 //! The window is a fixed-capacity ring buffer; oldest entry is evicted when full.
-
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
 
 use std::collections::VecDeque;
 
@@ -21,28 +18,28 @@ use std::collections::VecDeque;
 /// One observation of the system's cognitive and thermodynamic state.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Snapshot {
-    /// Statistical complexity C_μ (bits) — from Γ.statistical_complexity.point.
+    /// Statistical complexity `C_μ` (bits) — from `Γ.statistical_complexity.point`.
     pub c_mu: f64,
-    /// Entropy rate H_T (bits/sym) — from Γ.entropy_rate.point.
+    /// Entropy rate `H_T` (bits/sym) — from `Γ.entropy_rate.point`.
     pub h_t: f64,
-    /// Landauer cost Λ (joules) — from the most-recent PacrRecord.landauer_cost.point.
+    /// Landauer cost Λ (joules) — from the most-recent `PacrRecord.landauer_cost.point`.
     pub lambda: f64,
 }
 
 // ── GammaCalculator ───────────────────────────────────────���───────────────────
 
-/// Sliding-window observer that tracks (C_μ, H_T, Λ) and computes Γ_k.
+/// Sliding-window observer that tracks (`C_μ`, `H_T`, Λ) and computes `Γ_k`.
 ///
 /// # Design
 ///
 /// `capacity` sets the maximum number of snapshots retained.  A capacity of
-/// `w` means at most `w` observations are used for Γ_k computation.  The
+/// `w` means at most `w` observations are used for `Γ_k` computation.  The
 /// minimum meaningful capacity is 2 (need two snapshots to compute a delta).
 #[derive(Debug, Clone)]
 pub struct GammaCalculator {
     window: VecDeque<Snapshot>,
     capacity: usize,
-    /// OLS slope of the Γ_k series recorded after each push (newest last).
+    /// OLS slope of the `Γ_k` series recorded after each push (newest last).
     /// Used by [`second_derivative_alert`] to detect persistent deceleration.
     slope_history: VecDeque<f64>,
 }
@@ -65,7 +62,7 @@ impl GammaCalculator {
 
     /// Push a new snapshot into the window, evicting the oldest if full.
     ///
-    /// After adding the snapshot the OLS slope of the current Γ_k series is
+    /// After adding the snapshot the OLS slope of the current `Γ_k` series is
     /// appended to `slope_history` (capped at 8 entries) so that
     /// [`second_derivative_alert`] can detect persistent deceleration.
     pub fn push(&mut self, snap: Snapshot) {
@@ -97,13 +94,13 @@ impl GammaCalculator {
         self.window.is_empty()
     }
 
-    /// Returns `true` if the window has at least 2 snapshots (Γ_k computable).
+    /// Returns `true` if the window has at least 2 snapshots (`Γ_k` computable).
     #[must_use]
     pub fn ready(&self) -> bool {
         self.window.len() >= 2
     }
 
-    /// Compute Γ_k between the two most recent snapshots.
+    /// Compute `Γ_k` between the two most recent snapshots.
     ///
     /// ```text
     /// C̄_μ = (C_μ[k] + C_μ[k-1]) / 2          ΔC_μ = C_μ[k] − C_μ[k-1]
@@ -114,9 +111,9 @@ impl GammaCalculator {
     ///
     /// Returns `None` when:
     /// - Fewer than 2 snapshots are present.
-    /// - C̄_μ ≈ 0 (fully incompressible baseline — undefined normalisation).
-    /// - ΔΛ ≈ 0 **and** ΔC_μ ≈ 0 → neutral (caller should treat as Γ_k = 1.0).
-    /// - ΔΛ ≈ 0 but ΔC_μ ≠ 0 → unbounded (caller should treat as large |Γ_k|).
+    /// - `C̄_μ` ≈ 0 (fully incompressible baseline — undefined normalisation).
+    /// - ΔΛ ≈ 0 **and** `ΔC_μ` ≈ 0 → neutral (caller should treat as `Γ_k` = 1.0).
+    /// - ΔΛ ≈ 0 but `ΔC_μ` ≠ 0 → unbounded (caller should treat as large |`Γ_k`|).
     ///
     /// # Stability
     ///
@@ -132,10 +129,10 @@ impl GammaCalculator {
         let curr = &self.window[n - 1];
 
         let delta_c = curr.c_mu - prev.c_mu;
-        let c_bar   = (curr.c_mu + prev.c_mu) / 2.0;
+        let c_bar = f64::midpoint(curr.c_mu, prev.c_mu);
 
         let delta_lambda = curr.lambda - prev.lambda;
-        let lambda_bar   = (curr.lambda + prev.lambda) / 2.0;
+        let lambda_bar = f64::midpoint(curr.lambda, prev.lambda);
 
         // Guard: C̄_μ ≈ 0 → undefined.
         if c_bar.abs() < 1e-15 {
@@ -147,7 +144,11 @@ impl GammaCalculator {
         // Guard: ΔΛ ≈ 0.
         if delta_lambda.abs() < 1e-30 {
             // Both stable → neutral.  One nonzero → unbounded (return None).
-            return if delta_c.abs() < 1e-15 { Some(1.0) } else { None };
+            return if delta_c.abs() < 1e-15 {
+                Some(1.0)
+            } else {
+                None
+            };
         }
 
         // Guard: Λ̄ ≈ 0 (should not occur for real Landauer costs, but guard anyway).
@@ -161,7 +162,7 @@ impl GammaCalculator {
         Some(gamma.clamp(-100.0, 100.0))
     }
 
-    /// Compute Γ_k for every consecutive pair in the window.
+    /// Compute `Γ_k` for every consecutive pair in the window.
     ///
     /// Returns a `Vec` of length `window.len() - 1`.  `None` entries indicate
     /// degenerate pairs (see [`gamma_k`]).
@@ -174,17 +175,21 @@ impl GammaCalculator {
             .iter()
             .zip(self.window.iter().skip(1))
             .map(|(prev, curr)| {
-                let delta_c      = curr.c_mu - prev.c_mu;
-                let c_bar        = (curr.c_mu + prev.c_mu) / 2.0;
+                let delta_c = curr.c_mu - prev.c_mu;
+                let c_bar = f64::midpoint(curr.c_mu, prev.c_mu);
                 let delta_lambda = curr.lambda - prev.lambda;
-                let lambda_bar   = (curr.lambda + prev.lambda) / 2.0;
+                let lambda_bar = f64::midpoint(curr.lambda, prev.lambda);
 
                 if c_bar.abs() < 1e-15 {
                     return None;
                 }
                 let rel_c = delta_c / c_bar;
                 if delta_lambda.abs() < 1e-30 {
-                    return if delta_c.abs() < 1e-15 { Some(1.0) } else { None };
+                    return if delta_c.abs() < 1e-15 {
+                        Some(1.0)
+                    } else {
+                        None
+                    };
                 }
                 if lambda_bar.abs() < 1e-30 {
                     return None;
@@ -195,7 +200,7 @@ impl GammaCalculator {
             .collect()
     }
 
-    /// Mean of all finite Γ_k values in the series.  Returns `None` if no
+    /// Mean of all finite `Γ_k` values in the series.  Returns `None` if no
     /// finite values exist.
     #[must_use]
     pub fn mean_gamma(&self) -> Option<f64> {
@@ -218,9 +223,9 @@ impl GammaCalculator {
         &self.window
     }
 
-    /// Returns `true` when the Γ_k discovery rate is **persistently decelerating**.
+    /// Returns `true` when the `Γ_k` discovery rate is **persistently decelerating**.
     ///
-    /// "Decelerating" means the OLS slope of the Γ_k series itself has been
+    /// "Decelerating" means the OLS slope of the `Γ_k` series itself has been
     /// declining for at least three consecutive recorded steps (i.e. two
     /// consecutive accelerations are both negative).
     ///
@@ -230,7 +235,7 @@ impl GammaCalculator {
     /// # Physical interpretation
     ///
     /// A negative second derivative means the system is still discovering
-    /// structure (positive Γ_k slope) but at a decreasing rate — a leading
+    /// structure (positive `Γ_k` slope) but at a decreasing rate — a leading
     /// indicator of an impending plateau before the system reaches steady state.
     /// Early detection allows the adjuster to relax α and explore a broader
     /// causal-state space before stagnation sets in.
@@ -265,7 +270,11 @@ fn slope_of(values: &[f64]) -> f64 {
         num += (x - x_bar) * (y - y_bar);
         den += (x - x_bar) * (x - x_bar);
     }
-    if den.abs() < 1e-30 { 0.0 } else { num / den }
+    if den.abs() < 1e-30 {
+        0.0
+    } else {
+        num / den
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -275,7 +284,11 @@ mod tests {
     use super::*;
 
     fn snap(c: f64, h: f64, l: f64) -> Snapshot {
-        Snapshot { c_mu: c, h_t: h, lambda: l }
+        Snapshot {
+            c_mu: c,
+            h_t: h,
+            lambda: l,
+        }
     }
 
     #[test]
@@ -283,7 +296,7 @@ mod tests {
         let mut calc = GammaCalculator::new(4);
         calc.push(snap(1.0, 0.5, 1e-18));
         calc.push(snap(1.0, 0.5, 1e-18)); // no change in either
-        // Both ΔC_μ=0 and ΔΛ=0 → neutral Γ_k = 1.0.
+                                          // Both ΔC_μ=0 and ΔΛ=0 → neutral Γ_k = 1.0.
         assert_eq!(calc.gamma_k(), Some(1.0));
     }
 
@@ -346,7 +359,11 @@ mod tests {
     fn gamma_series_length() {
         let mut calc = GammaCalculator::new(5);
         for i in 0..5 {
-            calc.push(snap(1.0 + i as f64 * 0.1, 0.5, 1e-18 * (1.0 + i as f64 * 0.01)));
+            calc.push(snap(
+                1.0 + i as f64 * 0.1,
+                0.5,
+                1e-18 * (1.0 + i as f64 * 0.01),
+            ));
         }
         assert_eq!(calc.gamma_series().len(), 4);
     }

@@ -42,6 +42,19 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::must_use_candidate,
+    clippy::needless_pass_by_value,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::return_self_not_must_use,
+    clippy::unreadable_literal
+)]
 
 #[cfg(feature = "genesis_node")]
 mod apple_uma;
@@ -105,7 +118,9 @@ impl EtsProbe {
     /// Starts the probe immediately before the measured computation.
     #[must_use]
     pub fn start() -> Self {
-        Self { start: Instant::now() }
+        Self {
+            start: Instant::now(),
+        }
     }
 
     /// Stops the probe and returns the [`ResourceTriple`] for this computation.
@@ -123,8 +138,8 @@ impl EtsProbe {
         let elapsed_s = self.start.elapsed().as_secs_f64();
         ResourceTriple {
             energy: energy_from_landauer(landauer),
-            time:   time_estimate(elapsed_s),
-            space:  space_estimate(),
+            time: time_estimate(elapsed_s),
+            space: space_estimate(),
         }
     }
 }
@@ -147,7 +162,7 @@ pub fn measure<F, R>(landauer: &LandauerCost, f: F) -> (ResourceTriple, R)
 where
     F: FnOnce() -> R,
 {
-    let probe  = EtsProbe::start();
+    let probe = EtsProbe::start();
     let output = f();
     let triple = probe.finish(landauer);
     (triple, output)
@@ -186,17 +201,14 @@ pub(crate) fn time_estimate(elapsed_s: f64) -> Estimate<f64> {
 #[must_use]
 fn space_estimate() -> Estimate<f64> {
     let rss = sample_rss_bytes();
-    rss.map_or_else(
-        || wide_space_ci(),
-        |bytes| {
-            let page = 4_096.0_f64;
-            Estimate {
-                point: bytes,
-                lower: (bytes - page).max(0.0),
-                upper: bytes + page,
-            }
-        },
-    )
+    rss.map_or_else(wide_space_ci, |bytes| {
+        let page = 4_096.0_f64;
+        Estimate {
+            point: bytes,
+            lower: (bytes - page).max(0.0),
+            upper: bytes + page,
+        }
+    })
 }
 
 /// Platform-specific RSS sampling.  Returns `None` when unavailable.
@@ -226,7 +238,11 @@ fn sample_rss_bytes() -> Option<f64> {
 /// `upper = 1.0e12` (1 TiB) is a conservative physical upper bound.
 #[must_use]
 fn wide_space_ci() -> Estimate<f64> {
-    Estimate { point: 0.0, lower: 0.0, upper: 1.0e12 }
+    Estimate {
+        point: 0.0,
+        lower: 0.0,
+        upper: 1.0e12,
+    }
 }
 
 // ── Unit tests ────────────────────────────────────────────────────────────────
@@ -253,7 +269,9 @@ mod tests {
         let energy = energy_from_landauer(&lambda);
         assert!(
             energy.point >= lambda.point,
-            "E.point={} < Λ.point={}", energy.point, lambda.point
+            "E.point={} < Λ.point={}",
+            energy.point,
+            lambda.point
         );
     }
 
@@ -261,8 +279,18 @@ mod tests {
     fn energy_bounds_ordered() {
         let lambda = test_lambda();
         let e = energy_from_landauer(&lambda);
-        assert!(e.lower <= e.point, "E.lower={} > E.point={}", e.lower, e.point);
-        assert!(e.point <= e.upper, "E.point={} > E.upper={}", e.point, e.upper);
+        assert!(
+            e.lower <= e.point,
+            "E.lower={} > E.point={}",
+            e.lower,
+            e.point
+        );
+        assert!(
+            e.point <= e.upper,
+            "E.point={} > E.upper={}",
+            e.point,
+            e.upper
+        );
     }
 
     #[test]
@@ -295,20 +323,22 @@ mod tests {
     #[test]
     fn probe_finish_energy_exceeds_landauer() {
         let lambda = test_lambda();
-        let probe  = EtsProbe::start();
-        let _      = (0u64..100_000).sum::<u64>();
+        let probe = EtsProbe::start();
+        let _ = (0u64..100_000).sum::<u64>();
         let triple = probe.finish(&lambda);
         assert!(
             triple.energy.point >= lambda.point,
-            "E.point={} < Λ.point={}", triple.energy.point, lambda.point
+            "E.point={} < Λ.point={}",
+            triple.energy.point,
+            lambda.point
         );
     }
 
     #[test]
     fn probe_finish_time_positive() {
         let lambda = test_lambda();
-        let probe  = EtsProbe::start();
-        let _      = (0u64..100_000).sum::<u64>();
+        let probe = EtsProbe::start();
+        let _ = (0u64..100_000).sum::<u64>();
         let triple = probe.finish(&lambda);
         assert!(triple.time.point >= 0.0);
         assert!(triple.time.lower >= 0.0);
@@ -317,7 +347,7 @@ mod tests {
     #[test]
     fn probe_finish_space_non_negative() {
         let lambda = test_lambda();
-        let probe  = EtsProbe::start();
+        let probe = EtsProbe::start();
         let triple = probe.finish(&lambda);
         assert!(triple.space.point >= 0.0);
         assert!(triple.space.lower >= 0.0);
@@ -326,8 +356,8 @@ mod tests {
     #[test]
     fn probe_finish_passes_physics_check() {
         let lambda = test_lambda();
-        let probe  = EtsProbe::start();
-        let _      = (0u64..1_000).sum::<u64>();
+        let probe = EtsProbe::start();
+        let _ = (0u64..1_000).sum::<u64>();
         let triple = probe.finish(&lambda);
         let violations = triple.validate_physics();
         assert!(
@@ -340,18 +370,18 @@ mod tests {
 
     #[test]
     fn measure_returns_correct_output() {
-        let lambda    = test_lambda();
-        let (_, sum)  = measure(&lambda, || (0u64..1_000).sum::<u64>());
+        let lambda = test_lambda();
+        let (_, sum) = measure(&lambda, || (0u64..1_000).sum::<u64>());
         assert_eq!(sum, 499_500);
     }
 
     #[test]
     fn measure_triple_is_valid() {
-        let lambda        = test_lambda();
-        let (triple, _)   = measure(&lambda, || 42_u32);
+        let lambda = test_lambda();
+        let (triple, _) = measure(&lambda, || 42_u32);
         assert!(triple.energy.point >= lambda.point);
-        assert!(triple.time.lower   >= 0.0);
-        assert!(triple.space.lower  >= 0.0);
+        assert!(triple.time.lower >= 0.0);
+        assert!(triple.space.lower >= 0.0);
     }
 
     // ── wide_space_ci ─────────────────────────────────────────────────────────
@@ -378,7 +408,11 @@ mod prop_tests {
         (1e-25_f64..1e-10_f64).prop_flat_map(|point| {
             let lower = point * 0.97; // −3 % (290 K / 300 K ratio ≈ 0.967)
             let upper = point * 1.03; // +3 %
-            Just(Estimate { point, lower, upper })
+            Just(Estimate {
+                point,
+                lower,
+                upper,
+            })
         })
     }
 

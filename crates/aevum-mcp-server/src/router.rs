@@ -3,8 +3,6 @@
 // Pillar: I. PACR field: ι/Π.
 // ToolRouter: dispatches MCP JSON-RPC tool calls to handler functions.
 
-#![forbid(unsafe_code)]
-
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -42,7 +40,12 @@ pub struct McpError {
 
 impl McpResponse {
     pub fn ok(id: Value, result: Value) -> Self {
-        Self { jsonrpc: "2.0".into(), id, result: Some(result), error: None }
+        Self {
+            jsonrpc: "2.0".into(),
+            id,
+            result: Some(result),
+            error: None,
+        }
     }
 
     pub fn err(id: Value, code: i32, message: impl Into<String>) -> Self {
@@ -50,7 +53,10 @@ impl McpResponse {
             jsonrpc: "2.0".into(),
             id,
             result: None,
-            error: Some(McpError { code, message: message.into() }),
+            error: Some(McpError {
+                code,
+                message: message.into(),
+            }),
         }
     }
 }
@@ -58,24 +64,28 @@ impl McpResponse {
 /// Route an incoming MCP request to the appropriate tool handler.
 pub async fn dispatch(req: McpRequest, state: Arc<AppState>) -> McpResponse {
     match req.method.as_str() {
-        "tools/call"      => dispatch_tool_call(req, state).await,
-        "tools/list"      => tools_list(req.id),
-        "initialize"      => initialize(req.id),
-        "resources/list"  => resources_list(req.id),
-        "resources/read"  => resources_read(req, state).await,
+        "tools/call" => dispatch_tool_call(req, state).await,
+        "tools/list" => tools_list(req.id),
+        "initialize" => initialize(req.id),
+        "resources/list" => resources_list(req.id),
+        "resources/read" => resources_read(req, state).await,
         _ => McpResponse::err(req.id, -32601, format!("method not found: {}", req.method)),
     }
 }
 
 async fn dispatch_tool_call(req: McpRequest, state: Arc<AppState>) -> McpResponse {
-    let tool_name = req.params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let tool_name = req
+        .params
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let args = req.params.get("arguments").cloned().unwrap_or(Value::Null);
 
     match tool_name {
         "aevum_remember" => crate::tools::remember::handle(req.id, args, state).await,
-        "aevum_recall"   => crate::tools::recall::handle(req.id, args, state).await,
-        "aevum_filter"   => crate::tools::filter::handle(req.id, args, Arc::clone(&state)).await,
-        "aevum_settle"   => crate::tools::settle::handle(req.id, args, state).await,
+        "aevum_recall" => crate::tools::recall::handle(req.id, args, state).await,
+        "aevum_filter" => crate::tools::filter::handle(req.id, args, Arc::clone(&state)).await,
+        "aevum_settle" => crate::tools::settle::handle(req.id, args, state).await,
         _ => McpResponse::err(req.id, -32602, format!("unknown tool: {tool_name}")),
     }
 }
@@ -138,11 +148,14 @@ fn tools_list(id: Value) -> McpResponse {
 }
 
 fn initialize(id: Value) -> McpResponse {
-    McpResponse::ok(id, serde_json::json!({
-        "protocolVersion": "2024-11-05",
-        "capabilities": { "tools": {}, "resources": {} },
-        "serverInfo": { "name": "aevum-mcp-server", "version": "0.1.0" }
-    }))
+    McpResponse::ok(
+        id,
+        serde_json::json!({
+            "protocolVersion": "2024-11-05",
+            "capabilities": { "tools": {}, "resources": {} },
+            "serverInfo": { "name": "aevum-mcp-server", "version": "0.1.0" }
+        }),
+    )
 }
 
 // ── MCP Resources ─────────────────────────────────────────────────────────────
@@ -152,16 +165,19 @@ const RESOURCE_URI: &str = "aevum://context/current";
 
 /// `resources/list` — returns the static resource manifest.
 fn resources_list(id: Value) -> McpResponse {
-    McpResponse::ok(id, serde_json::json!({
-        "resources": [
-            {
-                "uri":      RESOURCE_URI,
-                "name":     "Aevum Causal Context",
-                "mimeType": "text/plain",
-                "description": "Current causal state: record count, S_T, H_T, and SSN trend. Inject at session start to give Claude a thermodynamically grounded working memory snapshot (~200 tokens)."
-            }
-        ]
-    }))
+    McpResponse::ok(
+        id,
+        serde_json::json!({
+            "resources": [
+                {
+                    "uri":      RESOURCE_URI,
+                    "name":     "Aevum Causal Context",
+                    "mimeType": "text/plain",
+                    "description": "Current causal state: record count, S_T, H_T, and SSN trend. Inject at session start to give Claude a thermodynamically grounded working memory snapshot (~200 tokens)."
+                }
+            ]
+        }),
+    )
 }
 
 /// `resources/read` — returns the live causal context summary.
@@ -169,10 +185,7 @@ async fn resources_read(req: McpRequest, state: Arc<AppState>) -> McpResponse {
     use crate::resources::context::current_context_summary;
 
     // Validate the requested URI.
-    let uri = req.params
-        .get("uri")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let uri = req.params.get("uri").and_then(|v| v.as_str()).unwrap_or("");
 
     if uri != RESOURCE_URI {
         return McpResponse::err(
@@ -188,11 +201,15 @@ async fn resources_read(req: McpRequest, state: Arc<AppState>) -> McpResponse {
     // We fall back to 0.0/0.0 for an empty ledger.
     let (s_t, h_t) = {
         let last = state.last_id();
-        state.dag.get(&last)
-            .map(|r| (
-                r.cognitive_split.statistical_complexity.point,
-                r.cognitive_split.entropy_rate.point,
-            ))
+        state
+            .dag
+            .get(&last)
+            .map(|r| {
+                (
+                    r.cognitive_split.statistical_complexity.point,
+                    r.cognitive_split.entropy_rate.point,
+                )
+            })
             .unwrap_or((0.0, 0.0))
     };
 
@@ -203,15 +220,18 @@ async fn resources_read(req: McpRequest, state: Arc<AppState>) -> McpResponse {
 
     let text = current_context_summary(record_count, s_t, h_t, &trend);
 
-    McpResponse::ok(req.id, serde_json::json!({
-        "contents": [
-            {
-                "uri":      RESOURCE_URI,
-                "mimeType": "text/plain",
-                "text":     text
-            }
-        ]
-    }))
+    McpResponse::ok(
+        req.id,
+        serde_json::json!({
+            "contents": [
+                {
+                    "uri":      RESOURCE_URI,
+                    "mimeType": "text/plain",
+                    "text":     text
+                }
+            ]
+        }),
+    )
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -223,11 +243,18 @@ mod tests {
 
     async fn test_state() -> Arc<AppState> {
         let dir = tempdir().unwrap();
-        AppState::new(dir.path().join("router_test.bin")).await.unwrap()
+        AppState::new(dir.path().join("router_test.bin"))
+            .await
+            .unwrap()
     }
 
     fn make_req(method: &str, params: serde_json::Value) -> McpRequest {
-        McpRequest { jsonrpc: "2.0".into(), id: Value::Number(1.into()), method: method.to_owned(), params }
+        McpRequest {
+            jsonrpc: "2.0".into(),
+            id: Value::Number(1.into()),
+            method: method.to_owned(),
+            params,
+        }
     }
 
     // ── dispatch ─────────────────────────────────────────────────────────────
@@ -267,13 +294,11 @@ mod tests {
         let req = make_req("tools/list", serde_json::json!({}));
         let resp = dispatch(req, state).await;
         let tools = resp.result.unwrap()["tools"].as_array().unwrap().to_owned();
-        let names: Vec<&str> = tools.iter()
-            .filter_map(|t| t["name"].as_str())
-            .collect();
-        assert!(names.contains(&"aevum_remember"),  "missing aevum_remember");
-        assert!(names.contains(&"aevum_recall"),    "missing aevum_recall");
-        assert!(names.contains(&"aevum_filter"),    "missing aevum_filter");
-        assert!(names.contains(&"aevum_settle"),    "missing aevum_settle");
+        let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
+        assert!(names.contains(&"aevum_remember"), "missing aevum_remember");
+        assert!(names.contains(&"aevum_recall"), "missing aevum_recall");
+        assert!(names.contains(&"aevum_filter"), "missing aevum_filter");
+        assert!(names.contains(&"aevum_settle"), "missing aevum_settle");
     }
 
     #[tokio::test]
@@ -310,7 +335,10 @@ mod tests {
         let req = make_req("resources/list", serde_json::json!({}));
         let resp = dispatch(req, state).await;
         assert!(resp.error.is_none());
-        let resources = resp.result.unwrap()["resources"].as_array().unwrap().to_owned();
+        let resources = resp.result.unwrap()["resources"]
+            .as_array()
+            .unwrap()
+            .to_owned();
         assert_eq!(resources.len(), 1);
         assert_eq!(resources[0]["uri"], "aevum://context/current");
     }
@@ -348,7 +376,10 @@ mod tests {
         let req = make_req("initialize", serde_json::json!({}));
         let resp = dispatch(req, state).await;
         let caps = &resp.result.unwrap()["capabilities"];
-        assert!(caps["resources"].is_object(), "capabilities must include 'resources'");
+        assert!(
+            caps["resources"].is_object(),
+            "capabilities must include 'resources'"
+        );
     }
 
     #[tokio::test]
@@ -359,9 +390,18 @@ mod tests {
         let tools = resp.result.unwrap()["tools"].as_array().unwrap().to_owned();
         let filter = tools.iter().find(|t| t["name"] == "aevum_filter").unwrap();
         let desc = filter["description"].as_str().unwrap();
-        assert!(desc.contains("Playwright"), "filter description must mention Playwright");
-        assert!(desc.contains("Firecrawl"),  "filter description must mention Firecrawl");
-        assert!(desc.contains("Context7"),   "filter description must mention Context7");
+        assert!(
+            desc.contains("Playwright"),
+            "filter description must mention Playwright"
+        );
+        assert!(
+            desc.contains("Firecrawl"),
+            "filter description must mention Firecrawl"
+        );
+        assert!(
+            desc.contains("Context7"),
+            "filter description must mention Context7"
+        );
     }
 
     #[tokio::test]
@@ -373,7 +413,8 @@ mod tests {
         for tool in &tools {
             assert!(
                 tool.get("inputSchema").is_some(),
-                "tool {:?} missing inputSchema", tool["name"]
+                "tool {:?} missing inputSchema",
+                tool["name"]
             );
         }
     }

@@ -47,6 +47,12 @@ candidate_pool/
 processing_factory/
 state_vault/
 checkpoint.txt
+src/main.rs
+
+# ── Internal strategy docs (not public) ───────────────────────────────────────
+EXEC-*.md
+PATCH-*.md
+STRATEGY-*.md
 
 # ── Legacy prototypes (pre-dates Phase 0 rewrite) ────────────────────────────
 crates/aevum-core/genesis/

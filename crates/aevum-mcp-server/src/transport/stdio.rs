@@ -14,8 +14,6 @@
 //
 // Fix: parse raw JSON Value first, gate on presence of "id".
 
-#![forbid(unsafe_code)]
-
 use std::sync::Arc;
 
 use crate::router::{dispatch, McpRequest, McpResponse};
@@ -24,11 +22,11 @@ use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 pub async fn run(state: Arc<AppState>) {
-    let stdin  = tokio::io::stdin();
+    let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
     let mut reader = BufReader::new(stdin);
     let mut writer = stdout;
-    let mut line   = String::new();
+    let mut line = String::new();
 
     loop {
         line.clear();
@@ -68,17 +66,14 @@ pub async fn run(state: Arc<AppState>) {
         // ── Step 3: Deserialise as Request and dispatch ───────────────────────
         let resp = match serde_json::from_value::<McpRequest>(raw) {
             Ok(req) => dispatch(req, Arc::clone(&state)).await,
-            Err(e)  => McpResponse::err(Value::Null, -32700, format!("parse error: {e}")),
+            Err(e) => McpResponse::err(Value::Null, -32700, format!("parse error: {e}")),
         };
         write_response(&mut writer, &resp).await;
     }
 }
 
 /// Serialise `resp` to a single newline-terminated JSON line and flush.
-async fn write_response(
-    writer: &mut tokio::io::Stdout,
-    resp:   &McpResponse,
-) {
+async fn write_response(writer: &mut tokio::io::Stdout, resp: &McpResponse) {
     let mut out = serde_json::to_string(resp).unwrap_or_default();
     out.push('\n');
     if let Err(e) = writer.write_all(out.as_bytes()).await {
@@ -100,8 +95,12 @@ mod tests {
 
     #[test]
     fn notification_has_no_id_field() {
-        let notif = json!({ "jsonrpc": "2.0", "method": "notifications/initialized", "params": {} });
-        assert!(notif.get("id").is_none(), "notifications must not carry an id");
+        let notif =
+            json!({ "jsonrpc": "2.0", "method": "notifications/initialized", "params": {} });
+        assert!(
+            notif.get("id").is_none(),
+            "notifications must not carry an id"
+        );
     }
 
     #[test]
@@ -115,6 +114,9 @@ mod tests {
         // JSON-RPC allows id: null for requests. Still a Request, not a Notification.
         let req = json!({ "jsonrpc": "2.0", "id": null, "method": "initialize", "params": {} });
         // id key is present (value is null) — get("id") returns Some(Value::Null)
-        assert!(req.get("id").is_some(), "id:null is still a Request, not a Notification");
+        assert!(
+            req.get("id").is_some(),
+            "id:null is still a Request, not a Notification"
+        );
     }
 }

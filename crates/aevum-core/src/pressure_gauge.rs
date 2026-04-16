@@ -25,8 +25,6 @@
 //! Call [`ThermodynamicPressureGauge::reset_window`] periodically (e.g. every
 //! `window_duration_secs`) from a background task to slide the window forward.
 
-#![forbid(unsafe_code)]
-
 use std::sync::atomic::{AtomicU64, Ordering};
 
 // ── ThermodynamicPressureGauge ────────────────────────────────────────────────
@@ -61,7 +59,7 @@ impl ThermodynamicPressureGauge {
     #[must_use]
     pub fn new(max_watts: f64, window_duration_secs: f64) -> Self {
         Self {
-            window_pj:            AtomicU64::new(0),
+            window_pj: AtomicU64::new(0),
             max_watts,
             window_duration_secs,
         }
@@ -115,7 +113,10 @@ mod tests {
     fn pass_through_mode_never_throttles() {
         let gauge = ThermodynamicPressureGauge::new(f64::MAX, 1.0);
         for _ in 0..10_000 {
-            assert!(!gauge.should_throttle(1e-3), "MAX watts should never throttle");
+            assert!(
+                !gauge.should_throttle(1e-3),
+                "MAX watts should never throttle"
+            );
         }
     }
 
@@ -131,7 +132,10 @@ mod tests {
         // Strictly greater than max_watts is required for throttle, so 1e-9 == 1e-9 passes.
         // Add a tiny bit more.
         gauge.should_throttle(1e-13); // push just past budget
-        assert!(gauge.should_throttle(1e-3), "should throttle after budget exceeded");
+        assert!(
+            gauge.should_throttle(1e-3),
+            "should throttle after budget exceeded"
+        );
     }
 
     // ── Reset window ──────────────────────────────────────────────────────────
@@ -143,12 +147,22 @@ mod tests {
         for _ in 0..1_000 {
             gauge.should_throttle(1e-12);
         }
-        assert!(gauge.should_throttle(1e-12), "should be throttled before reset");
+        assert!(
+            gauge.should_throttle(1e-12),
+            "should be throttled before reset"
+        );
 
         gauge.reset_window();
-        assert_eq!(gauge.accumulated_pj(), 0, "accumulator must be zero after reset");
+        assert_eq!(
+            gauge.accumulated_pj(),
+            0,
+            "accumulator must be zero after reset"
+        );
         // After reset the first small envelope should pass.
-        assert!(!gauge.should_throttle(1e-20), "first envelope after reset should pass");
+        assert!(
+            !gauge.should_throttle(1e-20),
+            "first envelope after reset should pass"
+        );
     }
 
     // ── Accumulated reading ───────────────────────────────────────────────────
@@ -158,7 +172,7 @@ mod tests {
         let gauge = ThermodynamicPressureGauge::new(f64::MAX, 1.0);
         gauge.should_throttle(1e-12); // 1 pJ
         gauge.should_throttle(1e-12); // 1 pJ
-        // Expect ≈ 2 pJ total.
+                                      // Expect ≈ 2 pJ total.
         let pj = gauge.accumulated_pj();
         assert!(pj >= 1 && pj <= 4, "accumulated ≈ 2 pJ, got {pj}");
     }

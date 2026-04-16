@@ -115,10 +115,7 @@ mod tests {
         let _v: Vec<u8> = vec![0u8; 4096];
         drop(_v);
         let after = bits_erased();
-        assert!(
-            after >= before,
-            "after={after} should be ≥ before={before}"
-        );
+        assert!(after >= before, "after={after} should be ≥ before={before}");
     }
 
     #[test]

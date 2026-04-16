@@ -29,9 +29,6 @@
 //! assert!(matches!(result2, ScreenResult::Proceed { .. }));
 //! ```
 
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
-
 // ── ScreenResult ──────────────────────────────────────────────────────────────
 
 /// Result of the quick-screen entropy pre-filter.
@@ -88,7 +85,10 @@ impl ScreenResult {
 pub fn quick_screen(data: &[u8], threshold: f64) -> ScreenResult {
     let entropy_bits = byte_entropy(data);
     if entropy_bits <= threshold {
-        ScreenResult::Skip { reason: "near-deterministic", entropy_bits }
+        ScreenResult::Skip {
+            reason: "near-deterministic",
+            entropy_bits,
+        }
     } else {
         ScreenResult::Proceed { entropy_bits }
     }
@@ -175,7 +175,10 @@ mod tests {
 
     #[test]
     fn screen_result_is_skip_helper() {
-        let skip = ScreenResult::Skip { reason: "near-deterministic", entropy_bits: 0.1 };
+        let skip = ScreenResult::Skip {
+            reason: "near-deterministic",
+            entropy_bits: 0.1,
+        };
         let proceed = ScreenResult::Proceed { entropy_bits: 5.0 };
         assert!(skip.is_skip());
         assert!(!proceed.is_skip());

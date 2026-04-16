@@ -41,8 +41,6 @@
 //! that does not mutate the DAG.  On failure the record is discarded without
 //! ever touching the append path.
 
-#![forbid(unsafe_code)]
-
 use std::collections::{HashSet, VecDeque};
 
 use thiserror::Error;
@@ -82,7 +80,7 @@ impl Default for DistanceTaxConfig {
     fn default() -> Self {
         Self {
             max_causal_distance: 64,
-            alpha:               0.1,
+            alpha: 0.1,
             max_children_per_node: 65_536,
         }
     }
@@ -94,19 +92,15 @@ impl Default for DistanceTaxConfig {
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum DistanceTaxError {
     /// The predecessor is too far from the current DAG frontier.
-    #[error(
-        "causal distance {distance} to predecessor {predecessor:?} exceeds max {max}"
-    )]
+    #[error("causal distance {distance} to predecessor {predecessor:?} exceeds max {max}")]
     DistanceExceeded {
         predecessor: CausalId,
-        distance:    usize,
-        max:         usize,
+        distance: usize,
+        max: usize,
     },
 
     /// The record's energy is insufficient to cover the distance tax.
-    #[error(
-        "energy {actual:.3e} J insufficient for distance tax {required:.3e} J"
-    )]
+    #[error("energy {actual:.3e} J insufficient for distance tax {required:.3e} J")]
     InsufficientTax { required: f64, actual: f64 },
 
     /// The predecessor node has reached its maximum child capacity.
@@ -151,7 +145,7 @@ impl CausalDag {
             if child_count >= config.max_children_per_node {
                 return Err(DistanceTaxError::ChildCapacityExceeded {
                     parent: *pred_id,
-                    max:    config.max_children_per_node,
+                    max: config.max_children_per_node,
                 });
             }
 
@@ -173,7 +167,7 @@ impl CausalDag {
         if record.resources.energy.point < required_energy {
             return Err(DistanceTaxError::InsufficientTax {
                 required: required_energy,
-                actual:   record.resources.energy.point,
+                actual: record.resources.energy.point,
             });
         }
 
@@ -196,8 +190,8 @@ impl CausalDag {
         }
         drop(root_children);
 
-        let mut queue:   VecDeque<(CausalId, usize)> = VecDeque::new();
-        let mut visited: HashSet<CausalId>            = HashSet::new();
+        let mut queue: VecDeque<(CausalId, usize)> = VecDeque::new();
+        let mut visited: HashSet<CausalId> = HashSet::new();
 
         queue.push_back((*id, 0));
         visited.insert(*id);
@@ -241,12 +235,7 @@ mod tests {
 
     /// Build a minimal valid record with exactly enough energy to cover
     /// `tax_multiplier × landauer_cost`.
-    fn record_with_energy(
-        id: u128,
-        preds: &[u128],
-        landauer: f64,
-        energy: f64,
-    ) -> PacrRecord {
+    fn record_with_energy(id: u128, preds: &[u128], landauer: f64, energy: f64) -> PacrRecord {
         let pred_set = preds.iter().map(|&p| CausalId(p)).collect();
         PacrBuilder::new()
             .id(CausalId(id))
@@ -254,12 +243,12 @@ mod tests {
             .landauer_cost(Estimate::exact(landauer))
             .resources(ResourceTriple {
                 energy: Estimate::exact(energy),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.5),
-                entropy_rate:           Estimate::exact(0.3),
+                entropy_rate: Estimate::exact(0.3),
             })
             .payload(Bytes::new())
             .build()
@@ -308,7 +297,10 @@ mod tests {
     #[test]
     fn rejects_when_child_capacity_exceeded() {
         // Use a tiny capacity for the test (not 65_536 — that would be too slow)
-        let config = DistanceTaxConfig { max_children_per_node: 3, ..Default::default() };
+        let config = DistanceTaxConfig {
+            max_children_per_node: 3,
+            ..Default::default()
+        };
         let dag = Arc::new(CausalDag::new());
         append_genesis_record(&dag, 1); // root
 
@@ -322,14 +314,20 @@ mod tests {
         let overflow = record_with_energy(5, &[1], 1e-20, 1e-16);
         let result = dag.validate_distance_tax(&overflow, &config);
         assert!(
-            matches!(result, Err(DistanceTaxError::ChildCapacityExceeded { max: 3, .. })),
+            matches!(
+                result,
+                Err(DistanceTaxError::ChildCapacityExceeded { max: 3, .. })
+            ),
             "expected ChildCapacityExceeded, got: {result:?}"
         );
     }
 
     #[test]
     fn allows_exactly_at_capacity() {
-        let config = DistanceTaxConfig { max_children_per_node: 3, ..Default::default() };
+        let config = DistanceTaxConfig {
+            max_children_per_node: 3,
+            ..Default::default()
+        };
         let dag = Arc::new(CausalDag::new());
         append_genesis_record(&dag, 1);
 
@@ -352,7 +350,7 @@ mod tests {
         // Build a 5-hop chain, then try to reference root from the tip.
         let config = DistanceTaxConfig {
             max_causal_distance: 3, // max 3 hops
-            alpha:               0.0, // no energy tax (isolate distance check)
+            alpha: 0.0,             // no energy tax (isolate distance check)
             max_children_per_node: 65_536,
         };
         let dag = Arc::new(CausalDag::new());
@@ -365,7 +363,10 @@ mod tests {
         let late_ref = record_with_energy(6, &[1], 1e-20, 1e-16);
         let result = dag.validate_distance_tax(&late_ref, &config);
         assert!(
-            matches!(result, Err(DistanceTaxError::DistanceExceeded { max: 3, .. })),
+            matches!(
+                result,
+                Err(DistanceTaxError::DistanceExceeded { max: 3, .. })
+            ),
             "expected DistanceExceeded, got: {result:?}"
         );
     }
@@ -401,7 +402,10 @@ mod tests {
     #[test]
     fn healthy_linear_chain_passes() {
         // Linear chain with short distances and sufficient energy
-        let config = DistanceTaxConfig { alpha: 0.1, ..Default::default() };
+        let config = DistanceTaxConfig {
+            alpha: 0.1,
+            ..Default::default()
+        };
         let dag = Arc::new(CausalDag::new());
         append_genesis_record(&dag, 1);
 
@@ -420,7 +424,10 @@ mod tests {
         // Reference the current tip (distance=0): tax multiplier = exp(0) = 1.0
         let next = record_with_energy(11, &[last], 1e-20, 1e-16);
         let result = dag.validate_distance_tax(&next, &config);
-        assert!(result.is_ok(), "healthy tip reference should pass: {result:?}");
+        assert!(
+            result.is_ok(),
+            "healthy tip reference should pass: {result:?}"
+        );
         assert!(
             (result.unwrap() - 1.0).abs() < 1e-10,
             "tip distance = 0 → multiplier = 1.0"
@@ -432,8 +439,8 @@ mod tests {
         // GENESIS is sentinel — distance tax must not apply to it
         let dag = Arc::new(CausalDag::new());
         let config = DistanceTaxConfig {
-            alpha:               999.0, // would be catastrophic if applied
-            max_causal_distance: 0,     // would reject everything if applied
+            alpha: 999.0,           // would be catastrophic if applied
+            max_causal_distance: 0, // would reject everything if applied
             max_children_per_node: 65_536,
         };
         let genesis_child = record_with_energy(1, &[], 1e-20, 1e-16);
@@ -446,18 +453,21 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.5),
-                entropy_rate:           Estimate::exact(0.3),
+                entropy_rate: Estimate::exact(0.3),
             })
             .payload(Bytes::new())
             .build()
             .unwrap();
         let result = dag.validate_distance_tax(&r, &config);
-        assert!(result.is_ok(), "GENESIS predecessor should be exempt: {result:?}");
+        assert!(
+            result.is_ok(),
+            "GENESIS predecessor should be exempt: {result:?}"
+        );
         drop(genesis_child);
     }
 
@@ -467,21 +477,24 @@ mod tests {
     fn distance_exceeded_error_message_contains_distance() {
         let err = DistanceTaxError::DistanceExceeded {
             predecessor: CausalId(42),
-            distance:    100,
-            max:         64,
+            distance: 100,
+            max: 64,
         };
         let msg = err.to_string();
         assert!(msg.contains("100"), "{msg}");
-        assert!(msg.contains("64"),  "{msg}");
+        assert!(msg.contains("64"), "{msg}");
     }
 
     #[test]
     fn insufficient_tax_error_message_contains_amounts() {
         let err = DistanceTaxError::InsufficientTax {
             required: 1.5e-10,
-            actual:   1e-20,
+            actual: 1e-20,
         };
         let msg = err.to_string();
-        assert!(msg.contains("1.500e-10") || msg.contains("1.5e-10") || msg.contains("1.50"), "{msg}");
+        assert!(
+            msg.contains("1.500e-10") || msg.contains("1.5e-10") || msg.contains("1.50"),
+            "{msg}"
+        );
     }
 }

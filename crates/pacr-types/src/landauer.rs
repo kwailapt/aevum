@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn landauer_floor_scales_linearly_with_bits() {
-        let one  = landauer_floor_joules(1,    300.0).point;
+        let one = landauer_floor_joules(1, 300.0).point;
         let mega = landauer_floor_joules(1_000_000, 300.0).point;
         let ratio = mega / one;
         assert!((ratio - 1_000_000.0).abs() < 1.0, "ratio={ratio}");
@@ -85,7 +85,7 @@ mod tests {
     fn landauer_floor_scales_linearly_with_temperature() {
         let at_300 = landauer_floor_joules(1, 300.0).point;
         let at_600 = landauer_floor_joules(1, 600.0).point;
-        let ratio  = at_600 / at_300;
+        let ratio = at_600 / at_300;
         assert!((ratio - 2.0).abs() < 1e-10, "ratio={ratio}");
     }
 

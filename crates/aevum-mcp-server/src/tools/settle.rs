@@ -11,8 +11,6 @@
 //      → ρ = (phi_after − phi_before) / lambda_joules
 //   4. Return { source_agent_id, target_agent_id, rho, landauer_cost_joules, reputation_score }
 
-#![forbid(unsafe_code)]
-
 use std::sync::Arc;
 
 use aevum_core::cso::AgentId;
@@ -145,7 +143,10 @@ mod tests {
             state,
         )
         .await;
-        assert!(resp.error.is_some(), "zero lambda must be rejected (Pillar II)");
+        assert!(
+            resp.error.is_some(),
+            "zero lambda must be rejected (Pillar II)"
+        );
     }
 
     #[tokio::test]
@@ -164,7 +165,10 @@ mod tests {
             state,
         )
         .await;
-        assert!(resp.error.is_some(), "negative lambda must be rejected (Pillar II)");
+        assert!(
+            resp.error.is_some(),
+            "negative lambda must be rejected (Pillar II)"
+        );
     }
 
     #[tokio::test]
@@ -207,10 +211,19 @@ mod tests {
         )
         .await;
         let r = resp.result.unwrap();
-        assert!(r.get("source_agent_id").is_some(), "must have source_agent_id");
+        assert!(
+            r.get("source_agent_id").is_some(),
+            "must have source_agent_id"
+        );
         assert!(r.get("rho").is_some(), "must have rho");
-        assert!(r.get("landauer_cost_joules").is_some(), "must have landauer_cost_joules");
-        assert!(r.get("reputation_score").is_some(), "must have reputation_score");
+        assert!(
+            r.get("landauer_cost_joules").is_some(),
+            "must have landauer_cost_joules"
+        );
+        assert!(
+            r.get("reputation_score").is_some(),
+            "must have reputation_score"
+        );
     }
 
     #[tokio::test]
@@ -249,8 +262,7 @@ mod tests {
         // 50 positive interactions → ρ EMA should converge above 0.5
         let mut last_rep = 0.0_f64;
         for i in 0..50_i64 {
-            let resp =
-                handle(Value::Number(i.into()), args.clone(), Arc::clone(&state)).await;
+            let resp = handle(Value::Number(i.into()), args.clone(), Arc::clone(&state)).await;
             last_rep = resp.result.unwrap()["reputation_score"].as_f64().unwrap();
         }
         assert!(

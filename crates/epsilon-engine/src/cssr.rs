@@ -18,9 +18,6 @@
 //! 3. Merge pass: collapse pairs of states that are now indistinguishable.
 //! 4. Compact (remove empty states, re-index).
 
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
-
 use std::collections::HashMap;
 
 /// Minimum per-history observations before eligibility for KS testing.
@@ -42,7 +39,11 @@ pub struct CausalState {
 
 impl CausalState {
     fn new(id: usize, alphabet_size: usize) -> Self {
-        Self { id, pooled: vec![0u32; alphabet_size], histories: Vec::new() }
+        Self {
+            id,
+            pooled: vec![0u32; alphabet_size],
+            histories: Vec::new(),
+        }
     }
 
     fn total(&self) -> u32 {
@@ -79,6 +80,7 @@ pub struct CssrResult {
 /// Returns `true` (reject homogeneity) when the empirical CDFs differ by more
 /// than the `alpha`-level critical value.  Returns `false` when either sample
 /// is too small (`< MIN_OBSERVATIONS`) — conservative (assume homogeneous).
+#[must_use]
 pub fn ks_reject_homogeneity(counts_a: &[u32], counts_b: &[u32], alpha: f64) -> bool {
     let n_a: u32 = counts_a.iter().sum();
     let n_b: u32 = counts_b.iter().sum();
@@ -87,8 +89,8 @@ pub fn ks_reject_homogeneity(counts_a: &[u32], counts_b: &[u32], alpha: f64) -> 
         return false; // insufficient data — do not split
     }
 
-    let fa = n_a as f64;
-    let fb = n_b as f64;
+    let fa = f64::from(n_a);
+    let fb = f64::from(n_b);
 
     // Maximum absolute CDF difference over the discrete alphabet.
     let k = counts_a.len().max(counts_b.len());
@@ -99,7 +101,7 @@ pub fn ks_reject_homogeneity(counts_a: &[u32], counts_b: &[u32], alpha: f64) -> 
     for i in 0..k {
         cum_a += if i < counts_a.len() { counts_a[i] } else { 0 };
         cum_b += if i < counts_b.len() { counts_b[i] } else { 0 };
-        let d = (cum_a as f64 / fa - cum_b as f64 / fb).abs();
+        let d = (f64::from(cum_a) / fa - f64::from(cum_b) / fb).abs();
         if d > d_max {
             d_max = d;
         }
@@ -117,9 +119,10 @@ pub fn ks_reject_homogeneity(counts_a: &[u32], counts_b: &[u32], alpha: f64) -> 
 
 /// Build per-suffix next-symbol count vectors for all depths `1..=max_depth`.
 ///
-/// Memory: O(N × max_depth) worst-case, but histories with identical byte
+/// Memory: O(N × `max_depth`) worst-case, but histories with identical byte
 /// sequences share one entry.  For typical processes this is
-/// O(|A|^max_depth × |A|) entries, capped by N.
+/// `O(|A|^max_depth` × |A|) entries, capped by N.
+#[must_use]
 pub fn build_suffix_stats(
     symbols: &[u8],
     alphabet_size: usize,
@@ -158,12 +161,8 @@ pub fn build_suffix_stats(
 /// # Returns
 ///
 /// [`CssrResult`] with the inferred causal states and history → state map.
-pub fn run_cssr(
-    symbols: &[u8],
-    alphabet_size: usize,
-    max_depth: usize,
-    alpha: f64,
-) -> CssrResult {
+#[must_use]
+pub fn run_cssr(symbols: &[u8], alphabet_size: usize, max_depth: usize, alpha: f64) -> CssrResult {
     let stats = build_suffix_stats(symbols, alphabet_size, max_depth);
     let mut states: Vec<CausalState> = Vec::new();
     let mut assignment: HashMap<Vec<u8>, usize> = HashMap::new();
@@ -171,11 +170,8 @@ pub fn run_cssr(
     // Process histories depth-by-depth (L=1 first).
     for depth in 1..=max_depth {
         // Collect all observed histories of this depth.
-        let mut histories: Vec<Vec<u8>> = stats
-            .keys()
-            .filter(|h| h.len() == depth)
-            .cloned()
-            .collect();
+        let mut histories: Vec<Vec<u8>> =
+            stats.keys().filter(|h| h.len() == depth).cloned().collect();
         histories.sort(); // deterministic order
 
         for history in histories {
@@ -183,8 +179,16 @@ pub fn run_cssr(
             let hist_total: u32 = hist_counts.iter().sum();
 
             // Parent history: drop the oldest (first) symbol.
-            let parent_key: Vec<u8> = if depth > 1 { history[1..].to_vec() } else { vec![] };
-            let parent_state = if depth > 1 { assignment.get(&parent_key).copied() } else { None };
+            let parent_key: Vec<u8> = if depth > 1 {
+                history[1..].to_vec()
+            } else {
+                vec![]
+            };
+            let parent_state = if depth > 1 {
+                assignment.get(&parent_key).copied()
+            } else {
+                None
+            };
 
             // --- Assign this history to a causal state ---
             let target_state: Option<usize> = if let Some(ps_id) = parent_state {
@@ -241,18 +245,19 @@ pub fn run_cssr(
         states.push(s);
     }
 
-    CssrResult { states, assignment, alphabet_size, max_depth }
+    CssrResult {
+        states,
+        assignment,
+        alphabet_size,
+        max_depth,
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Find the first existing state whose pooled distribution is homogeneous with
 /// `hist_counts` at significance `alpha`.  Returns `None` if no match found.
-fn find_compatible(
-    states: &[CausalState],
-    hist_counts: &[u32],
-    alpha: f64,
-) -> Option<usize> {
+fn find_compatible(states: &[CausalState], hist_counts: &[u32], alpha: f64) -> Option<usize> {
     states
         .iter()
         .filter(|s| !s.is_empty())
@@ -262,11 +267,7 @@ fn find_compatible(
 
 /// Merge pass: repeatedly scan for pairs of states whose pooled distributions
 /// are homogeneous; merge the larger-index into the smaller-index.
-fn merge_pass(
-    states: &mut Vec<CausalState>,
-    assignment: &mut HashMap<Vec<u8>, usize>,
-    alpha: f64,
-) {
+fn merge_pass(states: &mut Vec<CausalState>, assignment: &mut HashMap<Vec<u8>, usize>, alpha: f64) {
     let mut changed = true;
     while changed {
         changed = false;

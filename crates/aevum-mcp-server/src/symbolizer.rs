@@ -13,8 +13,6 @@
 //
 // Candidate for upstreaming into epsilon-engine::symbolize when stabilized.
 
-#![forbid(unsafe_code)]
-
 use std::collections::HashMap;
 
 /// Converts a natural-language string into a normalised f64 frequency vector

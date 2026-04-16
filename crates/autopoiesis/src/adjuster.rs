@@ -1,7 +1,7 @@
 //! Pillar: ALL. PACR field: Γ, Λ, Ω.
 //!
-//! Step 2 – DIAGNOSE: classify the current CognitiveRegime from the Γ_k series.
-//! Step 3 – PROPOSE: generate an AdjustmentProposal from the diagnosed regime.
+//! Step 2 – DIAGNOSE: classify the current `CognitiveRegime` from the `Γ_k` series.
+//! Step 3 – PROPOSE: generate an `AdjustmentProposal` from the diagnosed regime.
 //! Step 4 – VALIDATE: reject any proposal that would violate a PACR meta-property.
 //!
 //! # PACR Five Meta-Properties (RULES-ARCHITECTURE §4)
@@ -15,9 +15,6 @@
 //! Properties 1, 2, 5 are structural (checked here against the DAG).
 //! Properties 3, 4 are physical (checked via `PacrRecord::validate()`).
 
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
-
 use causal_dag::CausalDag;
 use pacr_types::{CausalId, PacrRecord, ValidationIssue};
 use thiserror::Error;
@@ -26,28 +23,28 @@ use thiserror::Error;
 
 /// Classification of the current cognitive operating state.
 ///
-/// Derived from the slope and variance of the Γ_k series.
+/// Derived from the slope and variance of the `Γ_k` series.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CognitiveRegime {
-    /// Γ_k series has positive slope — system is discovering structure.
+    /// `Γ_k` series has positive slope — system is discovering structure.
     StructureDiscovery,
-    /// Γ_k series has negative slope with high variance — noise is overwhelming.
+    /// `Γ_k` series has negative slope with high variance — noise is overwhelming.
     NoiseIntrusion,
-    /// Γ_k series has large variance with slope near zero — regime shift in progress.
+    /// `Γ_k` series has large variance with slope near zero — regime shift in progress.
     RegimeShift,
-    /// Γ_k series converges toward a stable value — approaching steady state.
+    /// `Γ_k` series converges toward a stable value — approaching steady state.
     Convergence,
-    /// Γ_k series is stable with low variance — NESS maintained.
+    /// `Γ_k` series is stable with low variance — NESS maintained.
     SteadyState,
     /// Insufficient data or all-None series — regime undetermined.
     Undetermined,
-    /// S_T↓ rapidly + inflow rate spike + source concentration > threshold.
+    /// `S_T`↓ rapidly + inflow rate spike + source concentration > threshold.
     ///
     /// Indicates a flood attack: many structurally similar packets from few
     /// sources.  Set by [`flood_detector::FloodDetector`] when source
     /// concentration exceeds its configured threshold.
     FloodDetected,
-    /// Γ_k series has positive slope but with persistently negative second
+    /// `Γ_k` series has positive slope but with persistently negative second
     /// derivative — discovery rate is decelerating.
     ///
     /// Set by [`GammaCalculator::second_derivative_alert`] when two consecutive
@@ -91,9 +88,9 @@ pub enum AdjustmentAction {
 /// Thresholds for regime classification.
 #[derive(Debug, Clone)]
 pub struct DiagnosisConfig {
-    /// Slope above this → StructureDiscovery.
+    /// Slope above this → `StructureDiscovery`.
     pub slope_high: f64,
-    /// Slope below this (negative) → NoiseIntrusion or RegimeShift.
+    /// Slope below this (negative) → `NoiseIntrusion` or `RegimeShift`.
     pub slope_low: f64,
     /// Variance above this → noisy.
     pub variance_high: f64,
@@ -104,15 +101,15 @@ pub struct DiagnosisConfig {
 impl Default for DiagnosisConfig {
     fn default() -> Self {
         Self {
-            slope_high:    0.05,
-            slope_low:    -0.05,
+            slope_high: 0.05,
+            slope_low: -0.05,
             variance_high: 0.10,
-            variance_low:  0.01,
+            variance_low: 0.01,
         }
     }
 }
 
-/// Classify the cognitive regime from the Γ_k series.
+/// Classify the cognitive regime from the `Γ_k` series.
 ///
 /// Uses ordinary least squares on the finite values of `series`.
 /// Returns `Undetermined` when fewer than 2 finite values are present.
@@ -123,7 +120,7 @@ pub fn diagnose(series: &[Option<f64>], cfg: &DiagnosisConfig) -> CognitiveRegim
         return CognitiveRegime::Undetermined;
     }
 
-    let slope    = ols_slope(&values);
+    let slope = ols_slope(&values);
     let variance = sample_variance(&values);
 
     if slope > cfg.slope_high {
@@ -146,7 +143,11 @@ pub fn diagnose(series: &[Option<f64>], cfg: &DiagnosisConfig) -> CognitiveRegim
 
 /// Generate an [`AdjustmentProposal`] for the given regime.
 #[must_use]
-pub fn propose(regime: CognitiveRegime, _current_depth: usize, current_alpha: f64) -> AdjustmentProposal {
+pub fn propose(
+    regime: CognitiveRegime,
+    _current_depth: usize,
+    current_alpha: f64,
+) -> AdjustmentProposal {
     match regime {
         CognitiveRegime::StructureDiscovery => AdjustmentProposal {
             regime,
@@ -203,7 +204,12 @@ pub enum ViolationError {
 
     /// An Estimate field has lower > point or point > upper.
     #[error("estimate bounds disordered in field '{field}': [{lower}, {point}, {upper}]")]
-    EstimateBoundsDisordered { field: &'static str, lower: f64, point: f64, upper: f64 },
+    EstimateBoundsDisordered {
+        field: &'static str,
+        lower: f64,
+        point: f64,
+        upper: f64,
+    },
 
     /// A causal predecessor in Π does not exist in the DAG.
     #[error("unknown predecessor {0} in Π — causal consistency violated")]
@@ -301,7 +307,12 @@ fn check_estimate_order(
     upper: f64,
 ) -> Result<(), ViolationError> {
     if lower > point + 1e-12 || point > upper + 1e-12 {
-        Err(ViolationError::EstimateBoundsDisordered { field, lower, point, upper })
+        Err(ViolationError::EstimateBoundsDisordered {
+            field,
+            lower,
+            point,
+            upper,
+        })
     } else {
         Ok(())
     }
@@ -321,7 +332,11 @@ fn ols_slope(values: &[f64]) -> f64 {
         num += (x - x_bar) * (y - y_bar);
         den += (x - x_bar) * (x - x_bar);
     }
-    if den.abs() < 1e-30 { 0.0 } else { num / den }
+    if den.abs() < 1e-30 {
+        0.0
+    } else {
+        num / den
+    }
 }
 
 /// Sample variance (Bessel-corrected) of a sequence.
@@ -352,16 +367,19 @@ mod tests {
         let energy = Estimate::exact(1e-14_f64); // E >> Λ
         PacrRecord {
             id: CausalId(id),
-            predecessors: preds.iter().map(|&p| CausalId(p)).collect::<PredecessorSet>(),
+            predecessors: preds
+                .iter()
+                .map(|&p| CausalId(p))
+                .collect::<PredecessorSet>(),
             landauer_cost: lambda,
             resources: ResourceTriple {
                 energy,
-                time:  Estimate::exact(1e-6),
+                time: Estimate::exact(1e-6),
                 space: Estimate::exact(4096.0),
             },
             cognitive_split: CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.9),
-                entropy_rate:           Estimate::exact(0.7),
+                entropy_rate: Estimate::exact(0.7),
             },
             payload: bytes::Bytes::new(),
         }
@@ -395,13 +413,20 @@ mod tests {
         let cfg = DiagnosisConfig::default();
         // Negative slope + high variance.
         let series: Vec<Option<f64>> = vec![
-            Some(2.0), Some(-2.0), Some(2.5), Some(-2.5), Some(3.0), Some(-3.0),
+            Some(2.0),
+            Some(-2.0),
+            Some(2.5),
+            Some(-2.5),
+            Some(3.0),
+            Some(-3.0),
         ];
         let regime = diagnose(&series, &cfg);
         // Slope is near 0 due to alternation, variance is high → RegimeShift or NoiseIntrusion.
         assert!(matches!(
             regime,
-            CognitiveRegime::RegimeShift | CognitiveRegime::NoiseIntrusion | CognitiveRegime::Convergence
+            CognitiveRegime::RegimeShift
+                | CognitiveRegime::NoiseIntrusion
+                | CognitiveRegime::Convergence
         ));
     }
 
@@ -451,7 +476,10 @@ mod tests {
             CognitiveRegime::DeceleratingDiscovery,
         ] {
             let p = propose(regime, 4, 0.001);
-            assert!(!p.rationale.is_empty(), "rationale must not be empty for {regime:?}");
+            assert!(
+                !p.rationale.is_empty(),
+                "rationale must not be empty for {regime:?}"
+            );
         }
     }
 
@@ -469,7 +497,10 @@ mod tests {
         let dag = CausalDag::new();
         let rec = valid_record(42, &[42]); // self-referential Π
         let err = validate(&rec, &dag).unwrap_err();
-        assert!(matches!(err, ViolationError::SelfReference(_) | ViolationError::PhysicsViolation(_)));
+        assert!(matches!(
+            err,
+            ViolationError::SelfReference(_) | ViolationError::PhysicsViolation(_)
+        ));
     }
 
     #[test]
@@ -496,7 +527,7 @@ mod tests {
         let mut rec = valid_record(5, &[]);
         // Set energy below Landauer floor.
         rec.resources.energy = Estimate::exact(1e-20);
-        rec.landauer_cost     = Estimate::exact(1e-18);
+        rec.landauer_cost = Estimate::exact(1e-18);
         let err = validate(&rec, &dag).unwrap_err();
         assert!(matches!(err, ViolationError::PhysicsViolation(_)));
     }
@@ -506,9 +537,16 @@ mod tests {
         let dag = CausalDag::new();
         let mut rec = valid_record(6, &[]);
         // Manually create a disordered Estimate (lower > upper).
-        rec.resources.time = Estimate { point: 1e-6, lower: 2e-6, upper: 3e-6 };
+        rec.resources.time = Estimate {
+            point: 1e-6,
+            lower: 2e-6,
+            upper: 3e-6,
+        };
         let err = validate(&rec, &dag).unwrap_err();
         // lower (2e-6) > point (1e-6) → EstimateBoundsDisordered
-        assert!(matches!(err, ViolationError::EstimateBoundsDisordered { .. }));
+        assert!(matches!(
+            err,
+            ViolationError::EstimateBoundsDisordered { .. }
+        ));
     }
 }

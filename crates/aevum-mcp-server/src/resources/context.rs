@@ -11,8 +11,6 @@
 // HTTP mode: SSE endpoint /events subscribes to this channel.
 // stdio mode: broadcast fires silently (zero overhead — no receivers).
 
-#![forbid(unsafe_code)]
-
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use tokio::sync::broadcast;
@@ -39,9 +37,9 @@ const TREND_DELTA: f64 = 0.05;
 #[allow(dead_code)]
 pub struct StateChange {
     pub record_count: u64,
-    pub s_t:          f64,
-    pub h_t:          f64,
-    pub trend:        StateTrend,
+    pub s_t: f64,
+    pub h_t: f64,
+    pub trend: StateTrend,
 }
 
 /// Pillar III classification of the current information-theoretic regime.
@@ -65,9 +63,9 @@ pub enum StateTrend {
 /// nanoseconds, never across await points). The broadcast channel is
 /// `tokio::sync::broadcast` (lock-free MPMC ring buffer).
 pub struct SsnBroadcaster {
-    tx:           broadcast::Sender<StateChange>,
+    tx: broadcast::Sender<StateChange>,
     /// Rolling window of (S_T, H_T) pairs, capped at TREND_WINDOW.
-    window:       Mutex<Vec<(f64, f64)>>,
+    window: Mutex<Vec<(f64, f64)>>,
     record_count: AtomicU64,
 }
 
@@ -77,7 +75,7 @@ impl SsnBroadcaster {
         let (tx, _) = broadcast::channel(CHANNEL_CAP);
         Self {
             tx,
-            window:       Mutex::new(Vec::with_capacity(TREND_WINDOW + 1)),
+            window: Mutex::new(Vec::with_capacity(TREND_WINDOW + 1)),
             record_count: AtomicU64::new(0),
         }
     }
@@ -110,7 +108,12 @@ impl SsnBroadcaster {
         // Only broadcast non-Stable events (SSN is a phase-transition detector,
         // not a heartbeat). stdio callers have no receivers so send() is a no-op.
         if trend != StateTrend::Stable {
-            let _ = self.tx.send(StateChange { record_count: count, s_t, h_t, trend });
+            let _ = self.tx.send(StateChange {
+                record_count: count,
+                s_t,
+                h_t,
+                trend,
+            });
         }
     }
 
@@ -144,9 +147,9 @@ fn classify_trend(window: &[(f64, f64)]) -> StateTrend {
     let h_t_rising = window.windows(2).all(|w| w[1].1 - w[0].1 >= TREND_DELTA);
 
     match (s_t_rising, h_t_rising) {
-        (true,  true)  => StateTrend::PhaseTransition,
-        (true,  false) => StateTrend::StructureDiscovery,
-        (false, true)  => StateTrend::EntropyIncrease,
+        (true, true) => StateTrend::PhaseTransition,
+        (true, false) => StateTrend::StructureDiscovery,
+        (false, true) => StateTrend::EntropyIncrease,
         (false, false) => StateTrend::Stable,
     }
 }
@@ -158,12 +161,17 @@ fn classify_trend(window: &[(f64, f64)]) -> StateTrend {
 ///
 /// Used by the HTTP transport and tested in the test suite.
 #[allow(dead_code)]
-pub fn current_context_summary(record_count: u64, s_t: f64, h_t: f64, trend: &StateTrend) -> String {
+pub fn current_context_summary(
+    record_count: u64,
+    s_t: f64,
+    h_t: f64,
+    trend: &StateTrend,
+) -> String {
     let trend_str = match trend {
         StateTrend::StructureDiscovery => "StructureDiscovery",
-        StateTrend::EntropyIncrease    => "EntropyIncrease",
-        StateTrend::PhaseTransition    => "PhaseTransition",
-        StateTrend::Stable             => "Stable",
+        StateTrend::EntropyIncrease => "EntropyIncrease",
+        StateTrend::PhaseTransition => "PhaseTransition",
+        StateTrend::Stable => "Stable",
     };
     format!(
         "Current causal state: {record_count} records, S_T: {s_t:.4}, H_T: {h_t:.4}, trend: {trend_str}"
@@ -237,7 +245,9 @@ mod tests {
         ssn.observe(0.2, 0.2);
 
         // First broadcast fires at the second observe (window len=2 ≥ 2, both deltas=0.1≥0.05).
-        let event = rx.try_recv().expect("should have received a PhaseTransition event");
+        let event = rx
+            .try_recv()
+            .expect("should have received a PhaseTransition event");
         assert_eq!(event.trend, StateTrend::PhaseTransition);
         // The first non-Stable broadcast is at observe(0.1,0.1) — s_t=0.1, h_t=0.1
         assert_eq!(event.s_t, 0.1);

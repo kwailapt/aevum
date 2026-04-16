@@ -24,8 +24,6 @@
 //!    not predecessors of any other record in the remote batch.  These form
 //!    the causal frontier to which a reunion record will link.
 
-#![forbid(unsafe_code)]
-
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
@@ -46,7 +44,7 @@ pub struct MergeResult {
     /// absent from both the remote batch and the local DAG (true orphans).
     /// Caller may retry after receiving additional remote records.
     pub orphans_deferred: Vec<Arc<PacrRecord>>,
-    /// CausalIds of the remote tips after merging: records that are not
+    /// `CausalIds` of the remote tips after merging: records that are not
     /// predecessors of any other record in the remote batch.
     /// These are the correct predecessor set for a reunion PACR record.
     pub remote_tips: Vec<CausalId>,
@@ -64,19 +62,19 @@ pub struct MergeResult {
 /// # Returns
 ///
 /// A [`MergeResult`] summarising what was merged, skipped, deferred, and
-/// which CausalIds form the remote tip set.
+/// which `CausalIds` form the remote tip set.
 ///
 /// # Complexity
 ///
-/// O(|remote| + E_remote) where E_remote is the total predecessor-edge count
+/// O(|remote| + `E_remote`) where `E_remote` is the total predecessor-edge count
 /// within the remote record set.  The topological sort is Kahn's algorithm.
 pub fn merge_remote(dag: &CausalDag, remote: &[Arc<PacrRecord>]) -> MergeResult {
     if remote.is_empty() {
         return MergeResult {
-            records_merged:   0,
-            records_skipped:  0,
+            records_merged: 0,
+            records_skipped: 0,
             orphans_deferred: vec![],
-            remote_tips:      vec![],
+            remote_tips: vec![],
         };
     }
 
@@ -111,7 +109,7 @@ pub fn merge_remote(dag: &CausalDag, remote: &[Arc<PacrRecord>]) -> MergeResult 
                 // Another goroutine may have inserted it between filter and sort.
                 records_skipped += 1;
             }
-            Err(DagError::MissingPredecessor { .. }) | Err(DagError::SelfReference(_)) => {
+            Err(DagError::MissingPredecessor { .. } | DagError::SelfReference(_)) => {
                 orphans_deferred.push(Arc::clone(rec));
             }
         }
@@ -173,8 +171,7 @@ pub fn topological_sort(records: &[Arc<PacrRecord>]) -> Vec<Arc<PacrRecord>> {
     // Also build adjacency: for each ID, which records have it as a predecessor?
     let mut in_degree: HashMap<CausalId, usize> = HashMap::with_capacity(records.len());
     // reverse_adj: pred_id → list of record IDs that have pred_id as a predecessor
-    let mut reverse_adj: HashMap<CausalId, Vec<CausalId>> =
-        HashMap::with_capacity(records.len());
+    let mut reverse_adj: HashMap<CausalId, Vec<CausalId>> = HashMap::with_capacity(records.len());
 
     // Initialize all records with in_degree 0.
     for rec in records {
@@ -277,12 +274,12 @@ mod tests {
                 .landauer_cost(Estimate::exact(1e-20))
                 .resources(ResourceTriple {
                     energy: Estimate::exact(1e-16),
-                    time:   Estimate::exact(1e-6),
-                    space:  Estimate::exact(0.0),
+                    time: Estimate::exact(1e-6),
+                    space: Estimate::exact(0.0),
                 })
                 .cognitive_split(CognitiveSplit {
                     statistical_complexity: Estimate::exact(0.5),
-                    entropy_rate:           Estimate::exact(0.3),
+                    entropy_rate: Estimate::exact(0.3),
                 })
                 .payload(Bytes::new())
                 .build()
@@ -354,7 +351,10 @@ mod tests {
         let r2 = make_record(2, &[1]);
         let result = merge_remote(&dag, &[r1_remote, r2]);
 
-        assert_eq!(result.records_skipped, 1, "R1 should be skipped (already in DAG)");
+        assert_eq!(
+            result.records_skipped, 1,
+            "R1 should be skipped (already in DAG)"
+        );
         assert_eq!(result.records_merged, 1, "R2 should be merged");
     }
 

@@ -15,10 +15,8 @@
 // CORS: tower-http CorsLayer, permissive (MCP clients run cross-origin).
 // Feature-gated: only compiled with `--features transport-http`.
 
-#![forbid(unsafe_code)]
-
-use std::sync::Arc;
 use std::convert::Infallible;
+use std::sync::Arc;
 
 use axum::{
     extract::State,
@@ -37,7 +35,7 @@ use tokio_stream::StreamExt as _;
 use tower_http::cors::CorsLayer;
 
 use crate::resources::context::StateChange;
-use crate::router::{McpRequest, dispatch as router_dispatch};
+use crate::router::{dispatch as router_dispatch, McpRequest};
 use crate::state::AppState;
 
 // ── Run ───────────────────────────────────────────────────────────────────────
@@ -61,10 +59,10 @@ fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         // MCP Streamable HTTP §3.2: POST / handles both Requests and Notifications.
         // §3.3: GET / is the SSE stream endpoint (same path, different method).
-        .route("/",        post(handle_jsonrpc).get(handle_sse))
+        .route("/", post(handle_jsonrpc).get(handle_sse))
         // Backward-compat alias — existing clients using /events keep working.
-        .route("/events",  get(handle_sse))
-        .route("/health",  get(handle_health))
+        .route("/events", get(handle_sse))
+        .route("/health", get(handle_health))
         .with_state(state)
         .layer(CorsLayer::permissive())
 }
@@ -86,16 +84,27 @@ async fn handle_jsonrpc(
     // ── Notification guard (MCP Streamable HTTP spec §3.2) ──────────────────
     // A message without "id" is a Notification — MUST NOT respond.
     if body.get("id").is_none() {
-        return (StatusCode::ACCEPTED, axum::response::Response::builder()
-            .status(StatusCode::ACCEPTED)
-            .body(axum::body::Body::empty())
-            .unwrap()).into_response();
+        return (
+            StatusCode::ACCEPTED,
+            axum::response::Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+            .into_response();
     }
 
     // ── Request: dispatch and return JSON-RPC response ───────────────────────
-    let id     = body.get("id").cloned().unwrap_or(Value::Null);
-    let method = body.get("method").and_then(|v| v.as_str()).unwrap_or("").to_owned();
-    let params = body.get("params").cloned().unwrap_or(Value::Object(Default::default()));
+    let id = body.get("id").cloned().unwrap_or(Value::Null);
+    let method = body
+        .get("method")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_owned();
+    let params = body
+        .get("params")
+        .cloned()
+        .unwrap_or(Value::Object(Default::default()));
 
     let req = McpRequest {
         jsonrpc: "2.0".into(),
@@ -128,11 +137,7 @@ async fn handle_sse(
                 "h_t":          change.h_t,
                 "trend":        format!("{:?}", change.trend),
             });
-            Ok::<Event, Infallible>(
-                Event::default()
-                    .json_data(data)
-                    .unwrap_or_default()
-            )
+            Ok::<Event, Infallible>(Event::default().json_data(data).unwrap_or_default())
         });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
@@ -149,9 +154,9 @@ async fn handle_health() -> impl IntoResponse {
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::http::{Request, Method};
-    use tower::ServiceExt; // for .oneshot()
+    use axum::http::{Method, Request};
     use tempfile::tempdir;
+    use tower::ServiceExt; // for .oneshot()
 
     async fn test_app() -> (Router, Arc<AppState>) {
         let dir = tempdir().unwrap();
@@ -188,9 +193,14 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert!(v.get("error").is_some(), "expected error for unknown tool; got: {v}");
+        assert!(
+            v.get("error").is_some(),
+            "expected error for unknown tool; got: {v}"
+        );
     }
 
     // ── MCP Streamable HTTP §3.2: Notification → 202 Accepted, empty body ────
@@ -210,9 +220,19 @@ mod tests {
             .body(Body::from(serde_json::to_vec(&body).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::ACCEPTED, "Notification MUST return 202");
-        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
-        assert!(bytes.is_empty(), "Notification response body MUST be empty; got {} bytes", bytes.len());
+        assert_eq!(
+            resp.status(),
+            StatusCode::ACCEPTED,
+            "Notification MUST return 202"
+        );
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert!(
+            bytes.is_empty(),
+            "Notification response body MUST be empty; got {} bytes",
+            bytes.len()
+        );
     }
 
     // ── MCP Streamable HTTP §3.3: GET / returns SSE stream ───────────────────
@@ -226,12 +246,20 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK, "GET / must return 200 for SSE");
-        let ct = resp.headers()
+        assert_eq!(
+            resp.status(),
+            StatusCode::OK,
+            "GET / must return 200 for SSE"
+        );
+        let ct = resp
+            .headers()
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        assert!(ct.contains("text/event-stream"), "GET / content-type must be text/event-stream; got: {ct}");
+        assert!(
+            ct.contains("text/event-stream"),
+            "GET / content-type must be text/event-stream; got: {ct}"
+        );
     }
 
     #[tokio::test]
@@ -255,7 +283,9 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         assert!(
             v.get("result").is_some() || v.get("error").is_some(),
@@ -276,7 +306,8 @@ mod tests {
         let headers = resp.headers();
         assert!(
             headers.contains_key("access-control-allow-origin"),
-            "CORS header missing; headers: {:?}", headers
+            "CORS header missing; headers: {:?}",
+            headers
         );
     }
 
@@ -291,10 +322,16 @@ mod tests {
             .body(Body::from(serde_json::to_vec(&body).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
         let tools = v["result"]["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 4, "must expose 4 tools: remember, recall, filter, settle");
+        assert_eq!(
+            tools.len(),
+            4,
+            "must expose 4 tools: remember, recall, filter, settle"
+        );
     }
 
     // ── /events alias still works (backward compat) ───────────────────────────
@@ -309,10 +346,14 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK, "GET /events must return 200");
-        let ct = resp.headers()
+        let ct = resp
+            .headers()
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        assert!(ct.contains("text/event-stream"), "content-type must be text/event-stream; got: {ct}");
+        assert!(
+            ct.contains("text/event-stream"),
+            "content-type must be text/event-stream; got: {ct}"
+        );
     }
 }

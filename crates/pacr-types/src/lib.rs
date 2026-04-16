@@ -26,6 +26,19 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::must_use_candidate,
+    clippy::needless_pass_by_value,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::return_self_not_must_use,
+    clippy::unreadable_literal
+)]
 
 pub mod complexity;
 pub mod estimate;
@@ -40,5 +53,5 @@ pub use estimate::{Estimate, EstimateError};
 pub use ets::{PhysicsViolation, ResourceTriple};
 pub use landauer::{landauer_floor_joules, LandauerCost, H_BAR, K_B, LANDAUER_JOULES_300K};
 pub use record::{
-    BuildError, CausalId, Payload, PacrBuilder, PacrRecord, PredecessorSet, ValidationIssue,
+    BuildError, CausalId, PacrBuilder, PacrRecord, Payload, PredecessorSet, ValidationIssue,
 };

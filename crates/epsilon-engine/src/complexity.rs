@@ -1,6 +1,6 @@
 //! Pillar: III. PACR field: Γ.
 //!
-//! Statistical complexity (C_μ) and entropy rate (h_μ) computation from a
+//! Statistical complexity (`C_μ`) and entropy rate (`h_μ`) computation from a
 //! [`CssrResult`], plus bootstrap confidence intervals.
 //!
 //! ## Definitions
@@ -13,9 +13,6 @@
 //! ```
 //!
 //! Bootstrap CIs use B=200 parametric resamples of the state emission counts.
-
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
 
 use crate::cssr::{CausalState, CssrResult};
 use pacr_types::Estimate;
@@ -40,7 +37,10 @@ pub fn counts_to_probs(counts: &[u32]) -> Vec<f64> {
         let n = counts.len() as f64;
         return vec![1.0 / n; counts.len()];
     }
-    counts.iter().map(|&c| c as f64 / total as f64).collect()
+    counts
+        .iter()
+        .map(|&c| f64::from(c) / f64::from(total))
+        .collect()
 }
 
 // ── Stationary distribution ───────────────────────────────────────────────────
@@ -80,7 +80,7 @@ pub fn stationary_distribution(result: &CssrResult, symbols: &[u8]) -> Vec<f64> 
 
 // ── C_μ and h_μ ───────────────────────────────────────────────────────────────
 
-/// Compute (C_μ, h_μ) from causal states and their stationary distribution.
+/// Compute (`C_μ`, `h_μ`) from causal states and their stationary distribution.
 #[must_use]
 pub fn compute_metrics(states: &[CausalState], pi: &[f64]) -> (f64, f64) {
     let c_mu = entropy(pi);
@@ -102,7 +102,11 @@ struct Xorshift64(u64);
 
 impl Xorshift64 {
     fn new(seed: u64) -> Self {
-        Self(if seed == 0 { 0xcafe_babe_dead_beef } else { seed })
+        Self(if seed == 0 {
+            0xcafe_babe_dead_beef
+        } else {
+            seed
+        })
     }
 
     fn next_u64(&mut self) -> u64 {
@@ -132,7 +136,7 @@ impl Xorshift64 {
 
 // ── Bootstrap CI (B = 200) ────────────────────────────────────────────────────
 
-/// Parametric bootstrap confidence intervals for (C_μ, h_μ).
+/// Parametric bootstrap confidence intervals for (`C_μ`, `h_μ`).
 ///
 /// Each bootstrap replicate perturbs each state's pooled counts by resampling
 /// from its empirical distribution with the same total.  The 2.5th–97.5th

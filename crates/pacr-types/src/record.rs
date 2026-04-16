@@ -125,7 +125,7 @@ impl PacrRecord {
         // E ≥ Λ: actual energy must exceed the Landauer theoretical floor
         if self.resources.energy.point < self.landauer_cost.point {
             issues.push(ValidationIssue::EnergyBelowLandauer {
-                actual_j:   self.resources.energy.point,
+                actual_j: self.resources.energy.point,
                 landauer_j: self.landauer_cost.point,
             });
         }
@@ -199,12 +199,12 @@ pub enum ValidationIssue {
 /// Partial records are a protocol violation — the error names the missing field.
 #[derive(Default)]
 pub struct PacrBuilder {
-    id:              Option<CausalId>,
-    predecessors:    Option<PredecessorSet>,
-    landauer_cost:   Option<LandauerCost>,
-    resources:       Option<ResourceTriple>,
+    id: Option<CausalId>,
+    predecessors: Option<PredecessorSet>,
+    landauer_cost: Option<LandauerCost>,
+    resources: Option<ResourceTriple>,
     cognitive_split: Option<CognitiveSplit>,
-    payload:         Option<Payload>,
+    payload: Option<Payload>,
 }
 
 impl PacrBuilder {
@@ -262,12 +262,22 @@ impl PacrBuilder {
     /// Returns [`BuildError::MissingDimension`] naming the first missing field.
     pub fn build(self) -> Result<PacrRecord, BuildError> {
         Ok(PacrRecord {
-            id:              self.id.ok_or(BuildError::MissingDimension("ι (id)"))?,
-            predecessors:    self.predecessors.ok_or(BuildError::MissingDimension("Π (predecessors)"))?,
-            landauer_cost:   self.landauer_cost.ok_or(BuildError::MissingDimension("Λ (landauer_cost)"))?,
-            resources:       self.resources.ok_or(BuildError::MissingDimension("Ω (resources)"))?,
-            cognitive_split: self.cognitive_split.ok_or(BuildError::MissingDimension("Γ (cognitive_split)"))?,
-            payload:         self.payload.ok_or(BuildError::MissingDimension("P (payload)"))?,
+            id: self.id.ok_or(BuildError::MissingDimension("ι (id)"))?,
+            predecessors: self
+                .predecessors
+                .ok_or(BuildError::MissingDimension("Π (predecessors)"))?,
+            landauer_cost: self
+                .landauer_cost
+                .ok_or(BuildError::MissingDimension("Λ (landauer_cost)"))?,
+            resources: self
+                .resources
+                .ok_or(BuildError::MissingDimension("Ω (resources)"))?,
+            cognitive_split: self
+                .cognitive_split
+                .ok_or(BuildError::MissingDimension("Γ (cognitive_split)"))?,
+            payload: self
+                .payload
+                .ok_or(BuildError::MissingDimension("P (payload)"))?,
         })
     }
 }
@@ -298,12 +308,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-19),
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(128.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(128.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(3.0),
-                entropy_rate:           Estimate::exact(1.0),
+                entropy_rate: Estimate::exact(1.0),
             })
             .payload(Bytes::from_static(b"hello aevum"))
             .build()
@@ -331,12 +341,12 @@ mod tests {
             .landauer_cost(Estimate::exact(0.0))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-19),
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build();
@@ -373,18 +383,20 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-19),
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
             .unwrap();
         let issues = r.validate();
-        assert!(issues.iter().any(|i| matches!(i, ValidationIssue::SelfReference)));
+        assert!(issues
+            .iter()
+            .any(|i| matches!(i, ValidationIssue::SelfReference)));
     }
 
     #[test]
@@ -395,12 +407,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-10)) // huge floor
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-20), // energy < floor
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -418,7 +430,11 @@ mod tests {
         let r = complete_record(); // energy=1e-19, landauer=1e-20
         let waste = r.thermodynamic_waste();
         let expected = 1e-19 - 1e-20;
-        assert!((waste.point - expected).abs() < 1e-30, "waste={}", waste.point);
+        assert!(
+            (waste.point - expected).abs() < 1e-30,
+            "waste={}",
+            waste.point
+        );
     }
 }
 

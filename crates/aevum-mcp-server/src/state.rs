@@ -18,19 +18,17 @@
 //   128-bit = 48-bit millisecond UNIX timestamp (left-shifted) | 80-bit process counter.
 //   Timestamps used ONLY for ID uniqueness, never for causal ordering — Π encodes order.
 
-#![forbid(unsafe_code)]
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use aevum_core::CsoIndex;
 use causal_dag::CausalDag;
 use ordered_float::OrderedFloat;
+use pacr_ledger::{LedgerError, PacrLedger};
 use pacr_types::CausalId;
-use pacr_ledger::{PacrLedger, LedgerError};
-use aevum_core::CsoIndex;
 use tokio::sync::RwLock;
 
 use crate::resources::context::SsnBroadcaster;
@@ -111,8 +109,8 @@ impl AppState {
         let ledger = PacrLedger::open(ledger_path)?;
 
         // ── Replay in-memory indexes from persisted ledger ────────────────────
-        let dag        = CausalDag::new();
-        let ssn        = SsnBroadcaster::new();
+        let dag = CausalDag::new();
+        let ssn = SsnBroadcaster::new();
         let mut s_t_map: BTreeMap<OrderedFloat<f64>, Vec<CausalId>> = BTreeMap::new();
         let mut last_id_val: u128 = 0;
 
@@ -128,10 +126,7 @@ impl AppState {
             }
 
             // Insert into BTreeMap s_t_index.
-            s_t_map
-                .entry(OrderedFloat(s_t))
-                .or_default()
-                .push(cid);
+            s_t_map.entry(OrderedFloat(s_t)).or_default().push(cid);
 
             // Feed SSN rolling window (trend awareness restored after replay).
             ssn.observe(s_t, h_t);
@@ -298,7 +293,11 @@ mod tests {
         drop(AppState::new(&path).await.unwrap());
         let state2 = AppState::new(&path).await.unwrap();
 
-        assert_eq!(state2.last_id(), CausalId::GENESIS, "empty ledger → GENESIS");
+        assert_eq!(
+            state2.last_id(),
+            CausalId::GENESIS,
+            "empty ledger → GENESIS"
+        );
         assert!(
             state2.s_t_index.read().await.is_empty(),
             "empty ledger → empty s_t_index"

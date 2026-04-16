@@ -5,8 +5,8 @@
 //!
 //! | Strategy      | Bin boundaries          | Use case                        |
 //! |---------------|-------------------------|---------------------------------|
-//! | EqualWidth    | Uniform value intervals | Known bounded range             |
-//! | EqualFrequency| Uniform sample quantiles| Unknown distribution (default)  |
+//! | `EqualWidth`    | Uniform value intervals | Known bounded range             |
+//! | `EqualFrequency`| Uniform sample quantiles| Unknown distribution (default)  |
 //!
 //! # Alphabet size
 //!
@@ -14,9 +14,6 @@
 //! - Small `|A|` (2–4): under-resolves structure, misses fine-grained patterns.
 //! - Large `|A|` (8–16): more states but requires larger N for statistical power.
 //! - Recommended: `|A|` = 4–8 for N < 50 000 samples.
-
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
 
 /// Error type for symbolization failures.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,9 +30,9 @@ pub enum SymbolizeError {
 impl std::fmt::Display for SymbolizeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EmptyInput       => write!(f, "input data is empty"),
-            Self::TooFewSymbols    => write!(f, "num_symbols must be ≥ 2"),
-            Self::ConstantInput    => write!(f, "all values are identical; cannot bin"),
+            Self::EmptyInput => write!(f, "input data is empty"),
+            Self::TooFewSymbols => write!(f, "num_symbols must be ≥ 2"),
+            Self::ConstantInput => write!(f, "all values are identical; cannot bin"),
         }
     }
 }
@@ -61,8 +58,8 @@ pub fn equal_width(data: &[f64], num_symbols: usize) -> Result<Vec<u8>, Symboliz
         return Err(SymbolizeError::TooFewSymbols);
     }
 
-    let min = data.iter().cloned().fold(f64::INFINITY, f64::min);
-    let max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let min = data.iter().copied().fold(f64::INFINITY, f64::min);
+    let max = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
     if (max - min).abs() < f64::EPSILON {
         return Err(SymbolizeError::ConstantInput);
@@ -109,7 +106,7 @@ pub fn equal_frequency(data: &[f64], num_symbols: usize) -> Result<Vec<u8>, Symb
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let first = sorted[0];
-    let last  = sorted[sorted.len() - 1];
+    let last = sorted[sorted.len() - 1];
     if (last - first).abs() < f64::EPSILON {
         return Err(SymbolizeError::ConstantInput);
     }
@@ -185,7 +182,10 @@ mod tests {
         }
         // Each bin should have ~25; allow ±2 slack.
         for c in counts {
-            assert!((23..=27).contains(&c), "bin count {c} out of expected range");
+            assert!(
+                (23..=27).contains(&c),
+                "bin count {c} out of expected range"
+            );
         }
     }
 
@@ -196,17 +196,26 @@ mod tests {
 
     #[test]
     fn equal_width_few_symbols_error() {
-        assert_eq!(equal_width(&[1.0, 2.0], 1), Err(SymbolizeError::TooFewSymbols));
+        assert_eq!(
+            equal_width(&[1.0, 2.0], 1),
+            Err(SymbolizeError::TooFewSymbols)
+        );
     }
 
     #[test]
     fn equal_width_constant_error() {
-        assert_eq!(equal_width(&[5.0, 5.0, 5.0], 4), Err(SymbolizeError::ConstantInput));
+        assert_eq!(
+            equal_width(&[5.0, 5.0, 5.0], 4),
+            Err(SymbolizeError::ConstantInput)
+        );
     }
 
     #[test]
     fn equal_frequency_constant_error() {
-        assert_eq!(equal_frequency(&[3.0, 3.0], 2), Err(SymbolizeError::ConstantInput));
+        assert_eq!(
+            equal_frequency(&[3.0, 3.0], 2),
+            Err(SymbolizeError::ConstantInput)
+        );
     }
 
     #[test]

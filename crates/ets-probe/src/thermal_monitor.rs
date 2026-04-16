@@ -11,7 +11,6 @@
 //!
 //! True SMC access requires the `IOKit` framework via unsafe FFI.  This
 //! implementation uses a **simulated** read (returning a configurable fixed
-//! temperature) so that the crate remains `#![forbid(unsafe_code)]`.  A future
 //! `ets-probe-ffi` crate will provide the real SMC binding; the interface
 //! (`ThermalSignal`, `ThermalMonitor`) is intentionally identical so the
 //! swap is a one-line dependency change.
@@ -20,9 +19,6 @@
 //!
 //! 85 °C — leaves a 15 °C margin before the M1 Ultra's documented throttle
 //! onset (~100 °C) and provides a safe operating zone under sustained load.
-
-#![forbid(unsafe_code)]
-#![deny(clippy::all, clippy::pedantic)]
 
 /// Die temperature above which the runtime should throttle (°C).
 pub const THROTTLE_THRESHOLD_C: f64 = 85.0;
@@ -80,13 +76,19 @@ impl ThermalMonitor {
     /// Create a monitor using the default 85 °C throttle threshold.
     #[must_use]
     pub fn new() -> Self {
-        Self { threshold_c: THROTTLE_THRESHOLD_C, simulated_temperature_c: None }
+        Self {
+            threshold_c: THROTTLE_THRESHOLD_C,
+            simulated_temperature_c: None,
+        }
     }
 
     /// Create a monitor with a custom threshold (useful in unit tests).
     #[must_use]
     pub fn with_threshold(threshold_c: f64) -> Self {
-        Self { threshold_c, simulated_temperature_c: None }
+        Self {
+            threshold_c,
+            simulated_temperature_c: None,
+        }
     }
 
     /// Inject a fixed temperature for deterministic testing.
@@ -178,14 +180,18 @@ mod tests {
 
     #[test]
     fn temperature_accessor_consistent_on_throttle() {
-        let sig = ThermalSignal::Throttle { temperature_c: 90.0 };
+        let sig = ThermalSignal::Throttle {
+            temperature_c: 90.0,
+        };
         assert!((sig.temperature_c() - 90.0).abs() < 1e-10);
         assert!(sig.should_throttle());
     }
 
     #[test]
     fn temperature_accessor_consistent_on_normal() {
-        let sig = ThermalSignal::Normal { temperature_c: 40.0 };
+        let sig = ThermalSignal::Normal {
+            temperature_c: 40.0,
+        };
         assert!((sig.temperature_c() - 40.0).abs() < 1e-10);
         assert!(!sig.should_throttle());
     }

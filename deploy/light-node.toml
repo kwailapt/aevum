@@ -1,0 +1,38 @@
+# deploy/light-node.toml
+#
+# Runtime configuration for the Aevum light node.
+# Target hardware: AWS Tokyo c7g.xlarge (2 vCPU, 8 GiB, aarch64)
+# Compiled with: --features light_node
+#
+# This file is read by `aevum run --config <path>` on startup.
+
+# ── Hardware identity ─────────────────────────────────────────────────────────
+
+# Deployment feature set.  Documents which Cargo features were used at compile
+# time; the runtime uses this for display/logging only (feature flags are
+# baked in at compile time, not read from this file).
+feature = "light_node"
+
+# ── Network ───────────────────────────────────────────────────────────────────
+
+# TCP port for the CSO reputation HTTP API.
+#   GET  /cso/reputation/:agent_id
+#   GET  /cso/leaderboard
+#   POST /cso/record_interaction
+cso_http_port = 8420
+
+# ── Compute budget ────────────────────────────────────────────────────────────
+
+# tokio async worker threads.  Matches the 2 vCPUs on c7g.xlarge.
+# Increasing beyond vCPU count wastes scheduler overhead on this instance type.
+max_threads = 2
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+
+# Directory for PACR ledger files (records.jsonl, status.json).
+# Must be writable by ec2-user; created on first run if absent.
+ledger_path = "/home/ec2-user/aevum/ledger"
+
+[forwarder]
+genesis_tailscale_ip = "100.113.207.108"
+genesis_port = 8420

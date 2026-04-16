@@ -12,3 +12,6 @@ name        = "landauer-allocator"
 version     = "0.1.0"
 edition     = "2021"
 description = "Landauer-on-Drop global allocator — counts bit erasures on every dealloc."
+
+[lints]
+workspace = true

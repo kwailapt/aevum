@@ -32,8 +32,6 @@
 //! This module provides the data types for each layer.  Actual validation is
 //! performed by `aevum-core`'s Router — this crate holds only the schema.
 
-#![forbid(unsafe_code)]
-
 use bytes::Bytes;
 use pacr_types::{CausalId, CognitiveSplit, Estimate, PredecessorSet, ResourceTriple};
 use serde::{Deserialize, Serialize};
@@ -173,17 +171,17 @@ mod tests {
 
     fn valid_tgp_frame(id: u128) -> TgpFrame {
         TgpFrame {
-            magic:    TGP_MAGIC,
-            id:       CausalId(id),
+            magic: TGP_MAGIC,
+            id: CausalId(id),
             landauer_cost: Estimate::exact(1e-20),
             resources: ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(4096.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(4096.0),
             },
             cognitive_split: CognitiveSplit {
                 statistical_complexity: Estimate::exact(1.0),
-                entropy_rate:           Estimate::exact(0.9),
+                entropy_rate: Estimate::exact(0.9),
             },
         }
     }
@@ -280,7 +278,7 @@ mod tests {
     fn payload_with_empty_body_roundtrips() {
         let payload = ApplicationPayload {
             agent_card: None,
-            body:       Bytes::new(),
+            body: Bytes::new(),
         };
         let json = serde_json::to_string(&payload).unwrap();
         let decoded: ApplicationPayload = serde_json::from_str(&json).unwrap();
@@ -291,7 +289,7 @@ mod tests {
     fn payload_with_body_bytes_roundtrips() {
         let payload = ApplicationPayload {
             agent_card: None,
-            body:       Bytes::from_static(b"hello PACR"),
+            body: Bytes::from_static(b"hello PACR"),
         };
         let json = serde_json::to_string(&payload).unwrap();
         let decoded: ApplicationPayload = serde_json::from_str(&json).unwrap();

@@ -11,11 +11,11 @@
 //!
 //! | Operation           | Complexity    | Mechanism                            |
 //! |---------------------|---------------|--------------------------------------|
-//! | [`CausalDag::append`] | O(\|Π\|)    | predecessor validation + DashMap CAS |
-//! | [`CausalDag::get`]  | O(1) expected | DashMap sharded read                 |
-//! | [`CausalDag::successors`] | O(1)    | DashMap reverse-index read           |
-//! | [`CausalDag::predecessors`] | O(1)  | DashMap sharded read                 |
-//! | [`CausalDag::ancestry`] | O(V+E)    | BFS with HashSet visited-set         |
+//! | [`CausalDag::append`] | O(\|Π\|)    | predecessor validation + `DashMap` CAS |
+//! | [`CausalDag::get`]  | O(1) expected | `DashMap` sharded read                 |
+//! | [`CausalDag::successors`] | O(1)    | `DashMap` reverse-index read           |
+//! | [`CausalDag::predecessors`] | O(1)  | `DashMap` sharded read                 |
+//! | [`CausalDag::ancestry`] | O(V+E)    | BFS with `HashSet` visited-set         |
 //!
 //! # CRDT semantics
 //!
@@ -34,6 +34,19 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::must_use_candidate,
+    clippy::needless_pass_by_value,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::return_self_not_must_use,
+    clippy::unreadable_literal
+)]
 
 pub mod distance_tax;
 pub mod merge;
@@ -41,8 +54,8 @@ pub mod merge;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
+use dashmap::DashMap;
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -65,11 +78,11 @@ use pacr_types::{CausalId, PacrRecord};
 /// 3. **No self-reference**: a record cannot list its own `id` in Π.
 #[derive(Debug)]
 pub struct CausalDag {
-    /// Primary map: CausalId → Arc<PacrRecord>.
+    /// Primary map: `CausalId` → Arc<PacrRecord>.
     /// `DashMap` provides O(1) sharded reads and atomic entry operations.
     nodes: DashMap<CausalId, Arc<PacrRecord>>,
 
-    /// Reverse index: predecessor_id → list of successor ids.
+    /// Reverse index: `predecessor_id` → list of successor ids.
     /// Enables O(1) forward traversal (cause → effect).
     /// `SmallVec<[CausalId; 4]>`: most nodes have 1–4 children (Pillar I,
     /// inline buffer avoids heap allocation for the common case).
@@ -108,7 +121,7 @@ impl CausalDag {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            nodes:    DashMap::new(),
+            nodes: DashMap::new(),
             children: DashMap::new(),
         }
     }
@@ -120,7 +133,7 @@ impl CausalDag {
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            nodes:    DashMap::with_capacity(capacity),
+            nodes: DashMap::with_capacity(capacity),
             children: DashMap::with_capacity(capacity),
         }
     }
@@ -140,7 +153,7 @@ impl CausalDag {
     ///
     /// # Complexity
     ///
-    /// O(\|Π\|) — one DashMap read per predecessor, then one atomic
+    /// O(\|Π\|) — one `DashMap` read per predecessor, then one atomic
     /// `entry()` insert for the node itself.
     pub fn append(&self, record: PacrRecord) -> Result<Arc<PacrRecord>, DagError> {
         let id = record.id;
@@ -158,7 +171,7 @@ impl CausalDag {
         for pred_id in &record.predecessors {
             if !pred_id.is_genesis() && !self.nodes.contains_key(pred_id) {
                 return Err(DagError::MissingPredecessor {
-                    child:  id,
+                    child: id,
                     parent: *pred_id,
                 });
             }
@@ -181,10 +194,7 @@ impl CausalDag {
         // a child.  GENESIS entries are indexed too — useful for enumerating
         // first-generation events.
         for pred_id in &record_arc.predecessors {
-            self.children
-                .entry(*pred_id)
-                .or_insert_with(SmallVec::new)
-                .push(id);
+            self.children.entry(*pred_id).or_default().push(id);
         }
 
         Ok(record_arc)
@@ -196,7 +206,7 @@ impl CausalDag {
     ///
     /// # Complexity
     ///
-    /// O(1) expected — single DashMap sharded read.
+    /// O(1) expected — single `DashMap` sharded read.
     #[must_use]
     pub fn get(&self, id: &CausalId) -> Option<Arc<PacrRecord>> {
         self.nodes.get(id).map(|r| Arc::clone(r.value()))
@@ -251,8 +261,8 @@ impl CausalDag {
     #[must_use]
     pub fn ancestry(&self, id: &CausalId, max_depth: usize) -> Vec<CausalId> {
         let mut visited: HashSet<CausalId> = HashSet::new();
-        let mut result:  Vec<CausalId>     = Vec::new();
-        let mut queue:   std::collections::VecDeque<(CausalId, usize)> =
+        let mut result: Vec<CausalId> = Vec::new();
+        let mut queue: std::collections::VecDeque<(CausalId, usize)> =
             std::collections::VecDeque::new();
 
         if let Some(record) = self.get(id) {
@@ -286,7 +296,7 @@ impl CausalDag {
     ///
     /// # Complexity
     ///
-    /// O(1) — DashMap tracks length per shard.
+    /// O(1) — `DashMap` tracks length per shard.
     #[must_use]
     pub fn len(&self) -> usize {
         self.nodes.len()
@@ -311,9 +321,7 @@ impl Default for CausalDag {
 mod tests {
     use super::*;
     use bytes::Bytes;
-    use pacr_types::{
-        CognitiveSplit, Estimate, PacrBuilder, ResourceTriple,
-    };
+    use pacr_types::{CognitiveSplit, Estimate, PacrBuilder, ResourceTriple};
 
     /// Build a minimal valid [`PacrRecord`] for testing.
     pub(super) fn make_record(id: u128, preds: &[u128]) -> PacrRecord {
@@ -324,12 +332,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-19),
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(128.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(128.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(1.0),
-                entropy_rate:           Estimate::exact(0.5),
+                entropy_rate: Estimate::exact(0.5),
             })
             .payload(Bytes::new())
             .build()
@@ -494,7 +502,7 @@ mod tests {
         // Once a record is inserted, a second get must return the same id.
         let dag = CausalDag::new();
         dag.append(make_record(42, &[0])).unwrap();
-        let first  = dag.get(&CausalId(42)).unwrap();
+        let first = dag.get(&CausalId(42)).unwrap();
         let second = dag.get(&CausalId(42)).unwrap();
         // Arc::ptr_eq is sufficient: same backing allocation = same record.
         assert!(Arc::ptr_eq(&first, &second));

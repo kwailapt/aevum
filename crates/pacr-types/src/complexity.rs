@@ -69,7 +69,7 @@ mod tests {
     fn structured_stream_ratio_gt_one() {
         let g = CognitiveSplit {
             statistical_complexity: Estimate::exact(4.0),
-            entropy_rate:           Estimate::exact(1.0),
+            entropy_rate: Estimate::exact(1.0),
         };
         let r = g.structure_noise_ratio().unwrap();
         assert!((r - 4.0).abs() < f64::EPSILON);
@@ -80,7 +80,7 @@ mod tests {
     fn noisy_stream_ratio_lt_one() {
         let g = CognitiveSplit {
             statistical_complexity: Estimate::exact(0.5),
-            entropy_rate:           Estimate::exact(2.0),
+            entropy_rate: Estimate::exact(2.0),
         };
         assert!(!g.is_structured());
     }
@@ -89,7 +89,7 @@ mod tests {
     fn deterministic_stream_returns_none_and_is_structured() {
         let g = CognitiveSplit {
             statistical_complexity: Estimate::exact(3.0),
-            entropy_rate:           Estimate::exact(0.0),
+            entropy_rate: Estimate::exact(0.0),
         };
         assert!(g.structure_noise_ratio().is_none());
         assert!(g.is_structured()); // deterministic → always structured
@@ -99,7 +99,7 @@ mod tests {
     fn equal_complexity_and_entropy_ratio_is_one() {
         let g = CognitiveSplit {
             statistical_complexity: Estimate::exact(2.0),
-            entropy_rate:           Estimate::exact(2.0),
+            entropy_rate: Estimate::exact(2.0),
         };
         let r = g.structure_noise_ratio().unwrap();
         assert!((r - 1.0).abs() < f64::EPSILON);

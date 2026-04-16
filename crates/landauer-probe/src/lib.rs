@@ -52,16 +52,13 @@ pub const TEMPERATURE_UPPER_K: f64 = 310.0;
 
 /// Landauer floor per bit at nominal temperature (joules).
 /// `K_B × 300 K × ln(2) ≈ 2.870 979 × 10⁻²¹ J`
-pub const LANDAUER_PER_BIT_NOMINAL_J: f64 =
-    K_B * TEMPERATURE_NOMINAL_K * std::f64::consts::LN_2;
+pub const LANDAUER_PER_BIT_NOMINAL_J: f64 = K_B * TEMPERATURE_NOMINAL_K * std::f64::consts::LN_2;
 
 /// Landauer floor per bit at lower temperature bound (joules).
-const LANDAUER_PER_BIT_LOWER_J: f64 =
-    K_B * TEMPERATURE_LOWER_K * std::f64::consts::LN_2;
+const LANDAUER_PER_BIT_LOWER_J: f64 = K_B * TEMPERATURE_LOWER_K * std::f64::consts::LN_2;
 
 /// Landauer floor per bit at upper temperature bound (joules).
-const LANDAUER_PER_BIT_UPPER_J: f64 =
-    K_B * TEMPERATURE_UPPER_K * std::f64::consts::LN_2;
+const LANDAUER_PER_BIT_UPPER_J: f64 = K_B * TEMPERATURE_UPPER_K * std::f64::consts::LN_2;
 
 // ── Core computation ──────────────────────────────────────────────────────────
 
@@ -131,7 +128,9 @@ impl LandauerTimer {
     /// Starts the timer immediately before the measured computation.
     #[must_use]
     pub fn start() -> Self {
-        Self { _start: Instant::now() }
+        Self {
+            _start: Instant::now(),
+        }
     }
 
     /// Stops the timer and returns the [`LandauerCost`] for `bits_erased`.
@@ -225,7 +224,7 @@ mod tests {
 
     #[test]
     fn compute_scales_linearly_with_bits() {
-        let one  = compute(1).point;
+        let one = compute(1).point;
         let mega = compute(1_000_000).point;
         let ratio = mega / one;
         assert!((ratio - 1_000_000.0).abs() < 1.0, "ratio={ratio}");
@@ -275,7 +274,7 @@ mod tests {
 
     #[test]
     fn bits_from_bytes_multiplies_by_four() {
-        assert_eq!(bits_from_bytes(1),   4);
+        assert_eq!(bits_from_bytes(1), 4);
         assert_eq!(bits_from_bytes(100), 400);
     }
 

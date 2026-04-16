@@ -5,7 +5,7 @@
 //! # Physical Axiom
 //!
 //! A flood attack exhibits a characteristic cognitive signature: many
-//! structurally similar packets from few sources.  Statistically, S_T drops
+//! structurally similar packets from few sources.  Statistically, `S_T` drops
 //! rapidly (structure becomes repetitive) while the inflow rate spikes.
 //!
 //! This module monitors source concentration in a sliding window.  When one
@@ -27,8 +27,6 @@
 //! }
 //! assert!(matches!(detector.diagnose(), FloodVerdict::FloodDetected { .. }));
 //! ```
-
-#![forbid(unsafe_code)]
 
 use std::collections::HashMap;
 
@@ -98,10 +96,8 @@ impl FloodDetector {
             return FloodVerdict::Normal;
         }
 
-        let Some((&dominant, &max_count)) = self
-            .source_counts
-            .iter()
-            .max_by_key(|(_, count)| *count)
+        let Some((&dominant, &max_count)) =
+            self.source_counts.iter().max_by_key(|(_, count)| *count)
         else {
             return FloodVerdict::Normal;
         };
@@ -111,7 +107,7 @@ impl FloodDetector {
         if concentration > self.concentration_threshold {
             FloodVerdict::FloodDetected {
                 dominant_source: dominant,
-                concentration:   (concentration * 100.0) as u64,
+                concentration: (concentration * 100.0) as u64,
             }
         } else {
             FloodVerdict::Normal
@@ -131,7 +127,7 @@ pub enum FloodVerdict {
         /// The source agent contributing the most records this window.
         dominant_source: CausalId,
         /// Concentration as percentage × 100 (e.g. 8500 = 85%).
-        concentration:   u64,
+        concentration: u64,
     },
 }
 
@@ -180,7 +176,13 @@ mod tests {
         }
         let verdict = d.diagnose();
         assert!(
-            matches!(verdict, FloodVerdict::FloodDetected { dominant_source: CausalId(1), .. }),
+            matches!(
+                verdict,
+                FloodVerdict::FloodDetected {
+                    dominant_source: CausalId(1),
+                    ..
+                }
+            ),
             "expected FloodDetected from source 1, got: {verdict:?}"
         );
     }

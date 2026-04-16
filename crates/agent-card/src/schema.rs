@@ -11,8 +11,6 @@
 //! - `capabilities`: at least one entry; each `id` is lowercase dot-namespaced.
 //! - `pricing.base_cost_joules`: if set and non-zero, must be ≥ `LANDAUER_FLOOR_JOULES`.
 
-#![forbid(unsafe_code)]
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -162,27 +160,45 @@ pub struct PricingModel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Metadata {
     /// Count of PACR records involving this `agent_id`.
-    #[serde(rename = "pacr:interaction_count", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:interaction_count",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub interaction_count: Option<u64>,
 
     /// Time-decay-weighted average latency in milliseconds.
-    #[serde(rename = "pacr:avg_latency_ms", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:avg_latency_ms",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub avg_latency_ms: Option<f64>,
 
     /// Time-decay-weighted average energy cost in Joules.
-    #[serde(rename = "pacr:avg_cost_joules", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:avg_cost_joules",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub avg_cost_joules: Option<f64>,
 
     /// Reputation score in \[0.0, 1.0\]: `f(success_rate, latency, Sτ/Hτ)`.
-    #[serde(rename = "pacr:reputation_score", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:reputation_score",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub reputation_score: Option<f64>,
 
     /// PageRank variant on the causal interaction graph.
-    #[serde(rename = "pacr:influence_rank", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:influence_rank",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub influence_rank: Option<f64>,
 
     /// Betweenness centrality score.
-    #[serde(rename = "pacr:critical_score", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pacr:critical_score",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub critical_score: Option<f64>,
 }
 
@@ -408,9 +424,7 @@ fn is_valid_capability_id(s: &str) -> bool {
     if !first.is_ascii_lowercase() && !first.is_ascii_digit() {
         return false;
     }
-    chars.all(|c| {
-        c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '_' || c == '-'
-    })
+    chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '_' || c == '-')
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -421,23 +435,23 @@ mod tests {
 
     fn minimal_card() -> AgentCard {
         AgentCard {
-            agent_id:     "01HZQK3P8EMXR9V7T5N2W4J6C0".into(),
-            name:         "Test Agent".into(),
-            version:      "1.0.0".into(),
+            agent_id: "01HZQK3P8EMXR9V7T5N2W4J6C0".into(),
+            name: "Test Agent".into(),
+            version: "1.0.0".into(),
             capabilities: vec![Capability {
-                id:            "text.generate".into(),
-                description:   "Generate text from a prompt.".into(),
-                tags:          None,
-                input_schema:  None,
+                id: "text.generate".into(),
+                description: "Generate text from a prompt.".into(),
+                tags: None,
+                input_schema: None,
                 output_schema: None,
             }],
             endpoint: Endpoint {
-                protocol:   Protocol::Http,
-                url:        "https://example.com".into(),
+                protocol: Protocol::Http,
+                url: "https://example.com".into(),
                 health_url: None,
-                auth:       None,
+                auth: None,
             },
-            pricing:  None,
+            pricing: None,
             metadata: None,
         }
     }
@@ -486,7 +500,13 @@ mod tests {
 
     #[test]
     fn accepts_valid_semver_variants() {
-        for ver in &["0.0.1", "1.0.0", "2.3.4-alpha.1", "1.0.0+build.42", "1.0.0-rc.1+sha.abc"] {
+        for ver in &[
+            "0.0.1",
+            "1.0.0",
+            "2.3.4-alpha.1",
+            "1.0.0+build.42",
+            "1.0.0-rc.1+sha.abc",
+        ] {
             let mut card = minimal_card();
             card.version = (*ver).into();
             assert!(card.validate().is_ok(), "version {ver:?} should be valid");
@@ -498,7 +518,10 @@ mod tests {
         for ver in &["1.0", "1", "v1.0.0", "1.0.0.0", "1.01.0"] {
             let mut card = minimal_card();
             card.version = (*ver).into();
-            assert!(card.validate().is_err(), "version {ver:?} should be rejected");
+            assert!(
+                card.validate().is_err(),
+                "version {ver:?} should be rejected"
+            );
         }
     }
 
@@ -538,10 +561,10 @@ mod tests {
     fn rejects_cost_below_landauer_floor() {
         let mut card = minimal_card();
         card.pricing = Some(PricingModel {
-            base_cost_joules:    Some(1e-30), // below floor
+            base_cost_joules: Some(1e-30), // below floor
             estimated_latency_ms: None,
-            currency:            None,
-            cost_per_request:    None,
+            currency: None,
+            cost_per_request: None,
         });
         let err = card.validate().unwrap_err();
         assert!(
@@ -555,10 +578,10 @@ mod tests {
         // Zero = free tier / public agent, explicitly allowed
         let mut card = minimal_card();
         card.pricing = Some(PricingModel {
-            base_cost_joules:    Some(0.0),
+            base_cost_joules: Some(0.0),
             estimated_latency_ms: None,
-            currency:            None,
-            cost_per_request:    None,
+            currency: None,
+            cost_per_request: None,
         });
         assert!(card.validate().is_ok());
     }
@@ -567,10 +590,10 @@ mod tests {
     fn accepts_cost_exactly_at_landauer_floor() {
         let mut card = minimal_card();
         card.pricing = Some(PricingModel {
-            base_cost_joules:    Some(LANDAUER_FLOOR_JOULES),
+            base_cost_joules: Some(LANDAUER_FLOOR_JOULES),
             estimated_latency_ms: None,
-            currency:            None,
-            cost_per_request:    None,
+            currency: None,
+            cost_per_request: None,
         });
         assert!(card.validate().is_ok());
     }
@@ -579,10 +602,10 @@ mod tests {
     fn rejects_negative_cost() {
         let mut card = minimal_card();
         card.pricing = Some(PricingModel {
-            base_cost_joules:    Some(-1e-20),
+            base_cost_joules: Some(-1e-20),
             estimated_latency_ms: None,
-            currency:            None,
-            cost_per_request:    None,
+            currency: None,
+            cost_per_request: None,
         });
         assert!(card.validate().is_err());
     }
@@ -609,10 +632,7 @@ mod tests {
             serde_json::to_string(&Protocol::WebSocket).unwrap(),
             "\"websocket\""
         );
-        assert_eq!(
-            serde_json::to_string(&Protocol::Http).unwrap(),
-            "\"http\""
-        );
+        assert_eq!(serde_json::to_string(&Protocol::Http).unwrap(), "\"http\"");
     }
 
     #[test]
@@ -639,7 +659,7 @@ mod tests {
     fn metadata_pacr_fields_serialize_with_colon_prefix() {
         let meta = Metadata {
             interaction_count: Some(42),
-            reputation_score:  Some(0.95),
+            reputation_score: Some(0.95),
             ..Default::default()
         };
         let json = serde_json::to_string(&meta).unwrap();

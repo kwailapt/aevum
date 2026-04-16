@@ -32,3 +32,14 @@ exclude = [
     "crates/aevum-core/crates/pacr-ledger",
 ]
 resolver = "2"
+
+# ── Workspace-level lint policy ───────────────────────────────────────────────
+# Physics code requires f64 ↔ integer casts. These pedantic lints are
+# inappropriate for scientific computing and are allowed workspace-wide.
+[workspace.lints.clippy]
+cast_precision_loss   = "allow"  # u64 → f64 standard in physics
+cast_possible_truncation = "allow"  # f64 → u8 in symbolization (intentional binning)
+cast_sign_loss        = "allow"  # f64 → usize in array indexing
+cast_possible_wrap    = "allow"  # usize → u8 for symbol alphabets
+similar_names         = "allow"  # s_t / h_t / c_mu are domain-standard names
+doc_markdown          = "allow"  # k_B, S_T, H_T are physics notation, not code

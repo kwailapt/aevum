@@ -12,3 +12,6 @@ thiserror  = "1"
 [dev-dependencies]
 bytes    = { version = "1", features = ["serde"] }
 smallvec = { version = "1", features = ["serde"] }
+
+[lints]
+workspace = true

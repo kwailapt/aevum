@@ -1,0 +1,13 @@
+[package]
+name = "agentcard-validator"
+version = "1.0.0"
+edition = "2021"
+description = "Lightweight AgentCard v1.0 schema validator. Zero execution logic — validates structure and invariants only."
+license = "Apache-2.0"
+repository = "https://github.com/aevum-network/agentcard-spec"
+
+[dependencies]
+serde_json = "1"
+
+[dev-dependencies]
+# no extra test deps needed

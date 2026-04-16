@@ -23,7 +23,7 @@
 //! - No pointer arithmetic
 //! - No raw memory reads or writes
 //! - No lifetime violations
-//! - No data races (AtomicU64 with Relaxed ordering is sound here: we only
+//! - No data races (`AtomicU64` with Relaxed ordering is sound here: we only
 //!   need monotonicity, not happens-before synchronisation)
 
 // This is the ONLY #[allow(unsafe_code)] in aevum-core.
@@ -133,10 +133,7 @@ mod tests {
         drop(_v);
         let after = bits_erased();
         // At minimum 4 KiB × 8 bits = 32 768 bits should have been counted.
-        assert!(
-            after >= before,
-            "after={after} should be ≥ before={before}"
-        );
+        assert!(after >= before, "after={after} should be ≥ before={before}");
     }
 
     #[test]

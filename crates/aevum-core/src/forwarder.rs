@@ -1,26 +1,24 @@
-//! Pillar: I. PACR field: none (light_node does not produce PACR records).
+//! Pillar: I. PACR field: none (`light_node` does not produce PACR records).
 //!
-//! **TailscaleForwarder** — stateless UDP pipe to genesis_node.
+//! **`TailscaleForwarder`** — stateless UDP pipe to `genesis_node`.
 //!
 //! Design: End-to-End Principle (Saltzer, Reed, Clark 1984).
-//! Intelligence at the edges (M1 genesis_node), dumb pipe in the middle (AWS light_node).
+//! Intelligence at the edges (M1 `genesis_node`), dumb pipe in the middle (AWS `light_node`).
 //!
-//! This module forwards raw envelope bytes to the genesis_node via Tailscale UDP.
+//! This module forwards raw envelope bytes to the `genesis_node` via Tailscale UDP.
 //! It does NOT parse CTP/AgentCard, does NOT maintain causal-dag,
-//! does NOT produce PacrRecords. It is a thermodynamic filter + pipe.
+//! does NOT produce `PacrRecords`. It is a thermodynamic filter + pipe.
 //!
 //! # Complexity
 //!
-//! O(1) per call. No heap-allocated state. No DashMap. No persistence.
+//! O(1) per call. No heap-allocated state. No `DashMap`. No persistence.
 //! Each `forward` call binds an ephemeral UDP socket, sends, and drops it.
-
-#![forbid(unsafe_code)]
 
 use std::net::SocketAddr;
 
 use tokio::net::UdpSocket;
 
-/// Stateless UDP forwarder to the genesis_node over Tailscale.
+/// Stateless UDP forwarder to the `genesis_node` over Tailscale.
 ///
 /// Pillar: I — O(1), lock-free, no shared mutable state.
 pub struct TailscaleForwarder {
@@ -44,7 +42,7 @@ impl TailscaleForwarder {
         Self { genesis_addr }
     }
 
-    /// Forward `raw_bytes` to genesis_node via UDP.
+    /// Forward `raw_bytes` to `genesis_node` via UDP.
     ///
     /// Binds an ephemeral local socket, sends once, drops the socket.
     /// O(1). No state retained after return.
