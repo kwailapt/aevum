@@ -45,7 +45,7 @@ impl TextSymbolizer {
 
         // Step 3: sort by frequency descending, take top alphabet_cap
         let mut pairs: Vec<([char; 4], u64)> = counts.into_iter().collect();
-        pairs.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+        pairs.sort_unstable_by_key(|p| std::cmp::Reverse(p.1));
         pairs.truncate(self.alphabet_cap);
 
         // Step 4: L1-normalise
