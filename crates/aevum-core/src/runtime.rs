@@ -658,7 +658,8 @@ async fn append_record_to_jsonl(record: &PacrRecord, path: &Path) -> Result<(), 
         .open(path)
         .await?;
 
-    file.write_all(line.as_bytes()).await
+    file.write_all(line.as_bytes()).await?;
+    file.flush().await
 }
 
 /// Write the runtime status to `status.json` (atomic overwrite).
