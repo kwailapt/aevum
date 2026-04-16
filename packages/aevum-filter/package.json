@@ -1,0 +1,16 @@
+{
+  "name": "aevum-filter",
+  "version": "0.1.0",
+  "description": "Cut AI token cost by 90% — extract causal structure from text using Aevum's ε-machine",
+  "bin": {
+    "aevum-filter": "./cli.mjs"
+  },
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kwailapt/aevum"
+  },
+  "homepage": "https://mcp.aevum.network",
+  "keywords": ["mcp", "ai", "token-compression", "claude", "llm", "thermodynamics", "epsilon-machine"]
+}
