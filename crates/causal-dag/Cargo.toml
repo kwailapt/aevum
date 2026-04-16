@@ -1,14 +1,21 @@
 [package]
-name        = "causal-dag"
-version     = "0.1.0"
-edition     = "2021"
-description = "Lock-free append-only causal DAG for Aevum PACR records."
+name          = "causal-dag"
+version       = "0.1.0"
+edition       = "2021"
+description   = "Lock-free append-only causal DAG (G-Set CRDT) for AI agent memory."
+license       = "Apache-2.0"
+repository    = "https://github.com/kwailapt/aevum"
+homepage      = "https://mcp.aevum.network"
+documentation = "https://docs.rs/causal-dag"
+keywords      = ["dag", "crdt", "causal", "ai", "memory"]
+categories    = ["data-structures", "concurrency"]
+readme        = "README.md"
 
 # Pillar I: lock-free (DashMap sharded), O(|Π|) append, O(1) lookup.
 # No Mutex, no RwLock in any hot path.
 
 [dependencies]
-pacr-types = { path = "../pacr-types" }
+pacr-types = { path = "../pacr-types", version = "0.1" }
 dashmap    = "6"
 smallvec   = { version = "1", features = ["serde"] }
 thiserror  = "1"

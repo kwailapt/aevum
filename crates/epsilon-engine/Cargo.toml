@@ -1,8 +1,15 @@
 [package]
-name        = "epsilon-engine"
-version     = "0.1.0"
-edition     = "2021"
-description = "CSSR ε-machine inference — Pillar III: Cognitive Complexity (S_T, H_T)."
+name          = "epsilon-engine"
+version       = "0.1.0"
+edition       = "2021"
+description   = "CSSR ε-machine: statistical complexity S_T and entropy rate H_T from data streams."
+license       = "Apache-2.0"
+repository    = "https://github.com/kwailapt/aevum"
+homepage      = "https://mcp.aevum.network"
+documentation = "https://docs.rs/epsilon-engine"
+keywords      = ["cssr", "epsilon-machine", "complexity", "entropy", "ai"]
+categories    = ["science", "algorithms"]
+readme        = "README.md"
 
 # Pillar III. PACR field: Γ (CognitiveSplit).
 # Implements the full Causal State Splitting Reconstruction (CSSR) algorithm.
@@ -13,7 +20,7 @@ description = "CSSR ε-machine inference — Pillar III: Cognitive Complexity (S
 genesis_node = []
 
 [dependencies]
-pacr-types = { path = "../pacr-types" }
+pacr-types = { path = "../pacr-types", version = "0.1" }
 
 [dev-dependencies]
 proptest = "1"
