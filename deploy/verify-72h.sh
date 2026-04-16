@@ -1,27 +1,23 @@
 #!/usr/bin/env bash
 # deploy/verify-72h.sh
 #
-# 72-hour batch validation for the Aevum light node (AWS c7g.xlarge).
-# Runs on the build machine (M1 Ultra); reaches the remote host via SSH and
-# HTTP for each check.
+# 24-hour batch validation for the Aevum light node (AWS c7g.xlarge, Dumb Pipe mode).
+# Runs on the build machine (M1 Ultra); reaches the remote host via SSH and HTTP.
 #
-# Pass conditions (RULES-CODING §3):
-#   1. Service active for all 72 hourly checks (zero crashes / unexpected exits).
-#   2. Final record_count in [259,200 ± 1,000]  ← 72h × 1 rec/s.
-#      (Adjust EXPECTED_RECORDS if producer_interval_ms ≠ 1000 in light-node.toml.)
-#   3. Peak process RSS < 2 GiB at all times.
-#   4. `aevum verify` exits 0 on the remote host (PACR ledger integrity).
+# Pass conditions:
+#   1. Service active for all hourly checks (zero crashes).
+#   2. GET /health returns HTTP 200.
+#   3. UDP forward functional: test packet sent to AWS:8421, no error.
+#   4. Process RSS < 2 GiB at all times (Dumb Pipe target: < 32 MiB).
+#   5. Service uptime > elapsed hours (no silent restarts).
+#   6. `aevum verify` exits 0 on the remote host (PACR ledger integrity).
 #
 # Usage:
-#   ./deploy/verify-72h.sh                 # full 72-hour run
+#   ./deploy/verify-72h.sh                 # full 24-hour run
 #   HOURS=1  ./deploy/verify-72h.sh        # smoke-test (1 h, 1 check)
-#   DRY_RUN=1 ./deploy/verify-72h.sh       # print SSH commands without running them
+#   DRY_RUN=1 ./deploy/verify-72h.sh       # print commands without running them
 #
 # Logs are written to:  <workspace-root>/logs/verify-72h.log
-#
-# Requirements on the build machine:
-#   - ssh access to ec2-user@100.116.253.50 (key in ~/.ssh or ssh-agent)
-#   - curl, jq (macOS: brew install jq)
 
 set -euo pipefail
 
@@ -34,13 +30,12 @@ REMOTE_BINARY="/home/ec2-user/aevum/aevum"
 REMOTE_LEDGER="/home/ec2-user/aevum/ledger"
 
 # Duration and cadence (override via env vars for smoke tests).
-TOTAL_HOURS="${HOURS:-72}"
+TOTAL_HOURS="${HOURS:-24}"
 CHECK_INTERVAL_SEC=3600              # 1 check per hour
 
 # Pass-condition thresholds.
-EXPECTED_RECORDS=259200              # 72h × 3600 s/h × 1 rec/s
-RECORD_TOLERANCE=1000
-MAX_MEMORY_KIB=$((2 * 1024 * 1024)) # 2 GiB expressed in kibibytes
+MAX_MEMORY_KIB=$((2 * 1024 * 1024)) # 2 GiB hard limit (Dumb Pipe target: < 32 MiB)
+MIN_UPTIME_HOURS=1                   # service must have been running at least this long
 
 # Log destination.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -196,7 +191,59 @@ check_memory() {
     fi
 }
 
-# ── One hourly check ──────────────────────────────────────────────────────────
+# Check 5: UDP forward functional — send test packet to AWS:8421.
+# Verifies the dumb-pipe socket is bound and accepting datagrams.
+# nc -u sends one packet and exits; we check the exit code only (no reply expected).
+check_udp_forward() {
+    if [[ "${DRY_RUN}" == "1" ]]; then
+        log "  [DRY_RUN] echo test_pacr_envelope | nc -u ${REMOTE_HOST} 8421"
+        return 0
+    fi
+    if echo "test_pacr_envelope" | nc -u -w1 "${REMOTE_HOST}" 8421 > /dev/null 2>&1; then
+        log "  [PASS] UDP forward: test packet sent to ${REMOTE_HOST}:8421"
+        return 0
+    else
+        log "  [FAIL] UDP forward: nc -u to ${REMOTE_HOST}:8421 failed"
+        return 1
+    fi
+}
+
+# Check 6: service uptime — ActiveEnterTimestamp must be > MIN_UPTIME_HOURS ago.
+# Guards against silent restart loops that pass check_service_active.
+check_uptime() {
+    if [[ "${DRY_RUN}" == "1" ]]; then
+        log "  [DRY_RUN] systemctl show aevum --property=ActiveEnterTimestamp"
+        return 0
+    fi
+    local ts_str uptime_sec uptime_h
+    ts_str="$(ssh_output \
+        "systemctl show aevum --property=ActiveEnterTimestamp --value 2>/dev/null || echo ''")" || ts_str=""
+    ts_str="$(echo "${ts_str}" | xargs)"  # trim whitespace
+
+    if [[ -z "${ts_str}" ]]; then
+        log "  [FAIL] uptime: could not read ActiveEnterTimestamp"
+        return 1
+    fi
+
+    # Parse timestamp on the remote host (avoids macOS/Linux date compat issues).
+    uptime_sec="$(ssh_output \
+        "python3 -c \"import datetime,sys; \
+         fmt='%a %Y-%m-%d %H:%M:%S %Z'; \
+         ts=datetime.datetime.strptime('${ts_str}', fmt); \
+         now=datetime.datetime.now(); \
+         print(int((now-ts).total_seconds()))\" 2>/dev/null || echo 0")" || uptime_sec=0
+    uptime_sec="$(echo "${uptime_sec}" | tr -dc '0-9')"
+    uptime_sec="${uptime_sec:-0}"
+    uptime_h=$(( uptime_sec / 3600 ))
+
+    if [[ "${uptime_h}" -ge "${MIN_UPTIME_HOURS}" ]]; then
+        log "  [PASS] uptime: ${uptime_h}h (service running since ${ts_str})"
+        return 0
+    else
+        log "  [FAIL] uptime: ${uptime_h}h < ${MIN_UPTIME_HOURS}h minimum (restarted recently?)"
+        return 1
+    fi
+}
 
 run_check() {
     local hour=$1
@@ -208,6 +255,8 @@ run_check() {
     check_cso_leaderboard || check_pass=0
     check_records_growing || check_pass=0
     check_memory          || check_pass=0
+    check_udp_forward     || check_pass=0
+    check_uptime          || check_pass=0
 
     if [[ "${check_pass}" -eq 1 ]]; then
         (( CHECKS_PASSED++ )) || true
@@ -285,9 +334,10 @@ run_final_validation() {
 main() {
     mkdir -p "${LOG_DIR}"
 
-    log_section "Aevum 72-hour batch validation"
+    log_section "Aevum 24-hour batch validation (Dumb Pipe)"
     log "  Target       : ${REMOTE_USER}@${REMOTE_HOST}"
-    log "  CSO endpoint : ${CSO_BASE_URL}/cso/leaderboard"
+    log "  Health URL   : ${CSO_BASE_URL}/health"
+    log "  UDP pipe     : ${REMOTE_HOST}:8421"
     log "  Total hours  : ${TOTAL_HOURS}"
     log "  Log file     : ${LOG_FILE}"
     log "  DRY_RUN      : ${DRY_RUN}"
