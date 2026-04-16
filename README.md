@@ -9,6 +9,8 @@
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![MCP 2025-03-26](https://img.shields.io/badge/MCP-2025--03--26-purple)](https://mcp.aevum.network)
 [![Live Server](https://img.shields.io/badge/live-mcp.aevum.network-brightgreen)](https://mcp.aevum.network)
+[![pacr-types on crates.io](https://img.shields.io/crates/v/pacr-types)](https://crates.io/crates/pacr-types)
+[![causal-dag on crates.io](https://img.shields.io/crates/v/causal-dag)](https://crates.io/crates/causal-dag)
 
 ```json
 { "mcpServers": { "aevum": { "url": "https://mcp.aevum.network" } } }
@@ -277,7 +279,7 @@ println!("S_T = {:.4}, H_T = {:.4}", machine.statistical_complexity(), machine.e
 | 7 | aevum-agi dual engine | — | ✅ |
 | 8 | aevum-mcp-server (MCP gateway) | 83 | ✅ |
 | 9 | Multi-agent CSO network | — | 🔜 |
-| 10 | crates.io publish | — | 🔜 |
+| 10 | crates.io publish (`pacr-types` + `causal-dag`) | — | ✅ |
 
 ---
 
