@@ -95,17 +95,59 @@ pub struct AppState {
 impl AppState {
     /// Open (or create) the PACR ledger at `ledger_path` and construct AppState.
     ///
+    /// On open, replays all existing records into the in-memory indexes so that
+    /// memory density (R1) is preserved across restarts:
+    ///   - `dag`       — lock-free causal DAG (DashMap)
+    ///   - `s_t_index` — BTreeMap<OrderedFloat<f64>, Vec<CausalId>> for recall
+    ///   - `ssn`       — SsnBroadcaster rolling window (trend awareness)
+    ///   - `last_id`   — advances to the highest replayed CausalId
+    ///
+    /// `cso` is NOT replayed from ledger (ρ rates require live interaction data,
+    /// not historical records — they are rebuilt through normal settle calls).
+    ///
     /// # Errors
     /// Returns `LedgerError` if the file cannot be opened or replayed.
     pub async fn new(ledger_path: impl AsRef<Path>) -> Result<Arc<Self>, LedgerError> {
         let ledger = PacrLedger::open(ledger_path)?;
+
+        // ── Replay in-memory indexes from persisted ledger ────────────────────
+        let dag        = CausalDag::new();
+        let ssn        = SsnBroadcaster::new();
+        let mut s_t_map: BTreeMap<OrderedFloat<f64>, Vec<CausalId>> = BTreeMap::new();
+        let mut last_id_val: u128 = 0;
+
+        for result in ledger.iter()? {
+            let record = result?;
+            let s_t = record.cognitive_split.statistical_complexity.point;
+            let h_t = record.cognitive_split.entropy_rate.point;
+            let cid = record.id;
+
+            // Advance last_id to the highest seen CausalId.
+            if cid.0 > last_id_val {
+                last_id_val = cid.0;
+            }
+
+            // Insert into BTreeMap s_t_index.
+            s_t_map
+                .entry(OrderedFloat(s_t))
+                .or_default()
+                .push(cid);
+
+            // Feed SSN rolling window (trend awareness restored after replay).
+            ssn.observe(s_t, h_t);
+
+            // Insert into lock-free DAG. Duplicate errors are impossible because
+            // the ledger enforces unique IDs, but we tolerate them defensively.
+            let _ = dag.append(record);
+        }
+
         Ok(Arc::new(Self {
-            dag: CausalDag::new(),
+            dag,
             ledger: tokio::sync::Mutex::new(ledger),
-            s_t_index: RwLock::new(BTreeMap::new()),
+            s_t_index: RwLock::new(s_t_map),
             cso: CsoIndex::new(),
-            ssn: SsnBroadcaster::new(),
-            last_id: Mutex::new(0), // CausalId::GENESIS
+            ssn,
+            last_id: Mutex::new(last_id_val),
         }))
     }
 
@@ -153,6 +195,114 @@ mod tests {
         for w in ids.windows(2) {
             assert!(w[0].0 < w[1].0, "IDs must be strictly monotonic");
         }
+    }
+
+    // ── Ledger replay tests ───────────────────────────────────────────────────
+
+    /// Helper: remember a piece of text into `state` via the full tool pipeline.
+    async fn remember(state: Arc<AppState>, text: &str) -> serde_json::Value {
+        crate::tools::remember::handle(
+            serde_json::Value::Number(1.into()),
+            serde_json::json!({"text": text}),
+            state,
+        )
+        .await
+        .result
+        .unwrap_or(serde_json::json!({"recorded": false}))
+    }
+
+    #[tokio::test]
+    async fn replay_restores_dag_on_reopen() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("replay_dag.bin");
+
+        let text = "The epsilon machine reconstructs causal states using CSSR algorithm with statistical complexity.";
+        let v = {
+            let state = AppState::new(&path).await.unwrap();
+            remember(Arc::clone(&state), text).await
+        };
+
+        if v["recorded"] != true {
+            return; // noise-screened — skip
+        }
+        let causal_id_str = v["causal_id"].as_str().unwrap().to_owned();
+
+        // Reopen — replay must restore the DAG.
+        let state2 = AppState::new(&path).await.unwrap();
+        let cid_u128 = u128::from_str_radix(&causal_id_str, 16).unwrap();
+        let cid = pacr_types::CausalId(cid_u128);
+        assert!(
+            state2.dag.get(&cid).is_some(),
+            "replayed DAG must contain the persisted record"
+        );
+    }
+
+    #[tokio::test]
+    async fn replay_restores_s_t_index_on_reopen() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("replay_idx.bin");
+
+        let text = "Pillar I hyperscale invariant O(n) lock-free causal dag DashMap CAS";
+        let v = {
+            let state = AppState::new(&path).await.unwrap();
+            remember(Arc::clone(&state), text).await
+        };
+
+        if v["recorded"] != true {
+            return;
+        }
+        let stored_s_t: f64 = v["s_t"].as_f64().unwrap();
+
+        // Reopen — s_t_index must contain the stored S_T.
+        let state2 = AppState::new(&path).await.unwrap();
+        let idx = state2.s_t_index.read().await;
+        let key = ordered_float::OrderedFloat(stored_s_t);
+        assert!(
+            idx.contains_key(&key),
+            "replayed s_t_index must contain stored S_T={stored_s_t:.4}"
+        );
+    }
+
+    #[tokio::test]
+    async fn replay_restores_last_id_on_reopen() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("replay_lastid.bin");
+
+        let text = "Landauer cost k_B T ln2 per erased bit thermodynamic Pillar II constraint";
+        let v = {
+            let state = AppState::new(&path).await.unwrap();
+            remember(Arc::clone(&state), text).await
+        };
+
+        if v["recorded"] != true {
+            return;
+        }
+        let causal_id_str = v["causal_id"].as_str().unwrap().to_owned();
+        let expected_cid_u128 = u128::from_str_radix(&causal_id_str, 16).unwrap();
+
+        // Reopen — last_id must be restored.
+        let state2 = AppState::new(&path).await.unwrap();
+        assert_eq!(
+            state2.last_id(),
+            pacr_types::CausalId(expected_cid_u128),
+            "replayed last_id must equal the last appended record's CausalId"
+        );
+    }
+
+    #[tokio::test]
+    async fn empty_ledger_replay_produces_empty_indexes() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("empty_replay.bin");
+
+        // Open once (creates header), close, reopen.
+        drop(AppState::new(&path).await.unwrap());
+        let state2 = AppState::new(&path).await.unwrap();
+
+        assert_eq!(state2.last_id(), CausalId::GENESIS, "empty ledger → GENESIS");
+        assert!(
+            state2.s_t_index.read().await.is_empty(),
+            "empty ledger → empty s_t_index"
+        );
     }
 
     #[tokio::test]

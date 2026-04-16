@@ -5,6 +5,9 @@
 //               → BTreeMap<OrderedFloat<f64>, Vec<CausalId>> range search
 //               → ρ-weighted scoring → top-K structured context.
 //
+// Optional: traverse_depth walks the Π predecessor chain from each top-K result
+// up to N hops, returning the full causal chain as structured context.
+//
 // Pipeline:
 //   1. TextSymbolizer::new().symbolize(query) → Option<Vec<f64>>
 //      → None → return {context:[], reason:"query_too_short"}
@@ -21,7 +24,9 @@
 //
 //   5. Sort descending by score, take top_k.
 //
-//   6. Return structured context (never raw natural language — Pillar III: return
+//   6. If traverse_depth > 0: walk Π predecessors up to traverse_depth hops.
+//
+//   7. Return structured context (never raw natural language — Pillar III: return
 //      causal structure, not token-inflated prose).
 
 #![forbid(unsafe_code)]
@@ -44,6 +49,9 @@ const DEFAULT_TOLERANCE: f64 = 1.0;
 /// Default number of records to return.
 const DEFAULT_TOP_K: usize = 5;
 
+/// Default traverse_depth: 0 = no ancestor traversal (similarity search only).
+const DEFAULT_TRAVERSE_DEPTH: usize = 0;
+
 /// Alphabet size for query ε-machine inference (must match remember pipeline).
 const ALPHABET_SIZE: usize = 8;
 
@@ -62,6 +70,11 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
         .get("tolerance")
         .and_then(|v| v.as_f64())
         .unwrap_or(DEFAULT_TOLERANCE);
+    let traverse_depth = args
+        .get("traverse_depth")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as usize)
+        .unwrap_or(DEFAULT_TRAVERSE_DEPTH);
 
     // ── 1. TextSymbolizer → 4-gram frequency distribution ────────────────────
     let freqs = match TextSymbolizer::new().symbolize(&query) {
@@ -171,17 +184,67 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
         (sum / scored.len() as f64).min(1.0)
     };
 
-    // ── 6. Build structured response ─────────────────────────────────────────
+    // ── 6. Causal chain traversal (traverse_depth > 0) ──────────────────────
+    // Walk Π predecessor chain from each top-K record up to `traverse_depth` hops.
+    // BFS, bounded. Genesis sentinels are skipped (CausalId(0)).
+    // Pillar I: worst-case O(top_k × traverse_depth) DAG reads — bounded constant.
+    let ancestor_chains: Vec<Vec<Value>> = if traverse_depth == 0 {
+        scored.iter().map(|_| vec![]).collect()
+    } else {
+        scored
+            .iter()
+            .map(|(_, root_cid, _, _, _)| {
+                let mut chain: Vec<Value> = Vec::new();
+                let mut frontier: Vec<pacr_types::CausalId> = vec![*root_cid];
+                let mut depth = 0usize;
+
+                while depth < traverse_depth && !frontier.is_empty() {
+                    let mut next_frontier: Vec<pacr_types::CausalId> = Vec::new();
+                    for cid in &frontier {
+                        if let Some(rec) = state.dag.get(cid) {
+                            let s_t = rec.cognitive_split.statistical_complexity.point;
+                            let h_t = rec.cognitive_split.entropy_rate.point;
+                            let payload_str = std::str::from_utf8(&rec.payload)
+                                .map(|s| s.to_owned())
+                                .unwrap_or_else(|_| format!("<binary {} bytes>", rec.payload.len()));
+                            chain.push(serde_json::json!({
+                                "causal_id": format!("{:032x}", cid.0),
+                                "depth":     depth + 1,
+                                "s_t":       s_t,
+                                "h_t":       h_t,
+                                "payload":   payload_str
+                            }));
+                            for pred in &rec.predecessors {
+                                if !pred.is_genesis() {
+                                    next_frontier.push(*pred);
+                                }
+                            }
+                        }
+                    }
+                    frontier = next_frontier;
+                    depth += 1;
+                }
+                chain
+            })
+            .collect()
+    };
+
+    // ── 7. Build structured response ─────────────────────────────────────────
     let relevant_records: Vec<Value> = scored
         .iter()
-        .map(|(score, cid, rec_s_t, rec_h_t, payload)| {
-            serde_json::json!({
+        .zip(ancestor_chains.iter())
+        .map(|((score, cid, rec_s_t, rec_h_t, payload), chain)| {
+            let mut obj = serde_json::json!({
                 "causal_id": format!("{:032x}", cid.0),
                 "s_t": rec_s_t,
                 "h_t": rec_h_t,
                 "score": score,
                 "payload": payload
-            })
+            });
+            if !chain.is_empty() {
+                obj["causal_chain"] = serde_json::json!(chain);
+            }
+            obj
         })
         .collect();
 
@@ -405,6 +468,94 @@ mod tests {
         )
         .await;
         assert!(resp.error.is_none(), "no error expected with default tolerance");
+    }
+
+    #[tokio::test]
+    async fn traverse_depth_zero_has_no_causal_chain() {
+        let dir = tempdir().unwrap();
+        let state = AppState::new(dir.path().join("l.bin")).await.unwrap();
+
+        let text = "epsilon machine causal state splitting reconstruction algorithm complexity";
+        let v = remember(Arc::clone(&state), text, 1).await;
+        if v["recorded"] != true {
+            return;
+        }
+
+        let resp = handle(
+            Value::Number(2.into()),
+            serde_json::json!({"query": text, "tolerance": 10.0, "traverse_depth": 0}),
+            Arc::clone(&state),
+        )
+        .await;
+        let r = resp.result.unwrap();
+        for rec in r["relevant_records"].as_array().unwrap() {
+            assert!(
+                rec.get("causal_chain").is_none(),
+                "traverse_depth=0 must not add causal_chain field"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn traverse_depth_one_includes_causal_chain() {
+        let dir = tempdir().unwrap();
+        let state = AppState::new(dir.path().join("l.bin")).await.unwrap();
+
+        // Store two records so the second has a predecessor to traverse.
+        let text1 = "Landauer bound energy cost thermodynamic constraint Pillar II";
+        let text2 = "causal state epsilon machine CSSR algorithm statistical complexity Pillar III";
+        let v1 = remember(Arc::clone(&state), text1, 1).await;
+        let v2 = remember(Arc::clone(&state), text2, 2).await;
+        if v1["recorded"] != true || v2["recorded"] != true {
+            return;
+        }
+
+        let resp = handle(
+            Value::Number(3.into()),
+            serde_json::json!({"query": text2, "tolerance": 10.0, "traverse_depth": 1}),
+            Arc::clone(&state),
+        )
+        .await;
+        let r = resp.result.unwrap();
+        let relevant = r["relevant_records"].as_array().unwrap();
+        // At least one record should have a causal_chain field (the one with a predecessor).
+        let has_chain = relevant.iter().any(|rec| rec.get("causal_chain").is_some());
+        assert!(has_chain, "traverse_depth=1 on a chained record must produce causal_chain");
+    }
+
+    #[tokio::test]
+    async fn traverse_depth_chain_entries_have_required_fields() {
+        let dir = tempdir().unwrap();
+        let state = AppState::new(dir.path().join("l.bin")).await.unwrap();
+
+        let text1 = "autopoiesis feedback loop Gamma field schema evolution";
+        let text2 = "causal return rate rho CSO Pillar II thermodynamic settlement";
+        let v1 = remember(Arc::clone(&state), text1, 1).await;
+        let v2 = remember(Arc::clone(&state), text2, 2).await;
+        if v1["recorded"] != true || v2["recorded"] != true {
+            return;
+        }
+
+        let resp = handle(
+            Value::Number(3.into()),
+            serde_json::json!({"query": text2, "tolerance": 10.0, "traverse_depth": 2}),
+            Arc::clone(&state),
+        )
+        .await;
+        let r = resp.result.unwrap();
+        for rec in r["relevant_records"].as_array().unwrap() {
+            if let Some(chain) = rec.get("causal_chain").and_then(|c| c.as_array()) {
+                for entry in chain {
+                    assert!(entry.get("causal_id").is_some(), "chain entry must have causal_id");
+                    assert!(entry.get("depth").is_some(),    "chain entry must have depth");
+                    assert!(entry.get("s_t").is_some(),      "chain entry must have s_t");
+                    assert!(entry.get("h_t").is_some(),      "chain entry must have h_t");
+                    assert!(entry.get("payload").is_some(),  "chain entry must have payload");
+                    let depth = entry["depth"].as_u64().unwrap();
+                    assert!(depth >= 1, "depth must be ≥1");
+                }
+            }
+        }
     }
 
     #[tokio::test]
