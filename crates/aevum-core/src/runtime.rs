@@ -681,8 +681,7 @@ fn chrono_now() -> String {
     // std::time::SystemTime → seconds since UNIX epoch
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_secs());
     // Format as "epoch:<secs>" — full ISO-8601 needs chrono (not added to keep deps lean).
     format!("epoch:{secs}")
 }
