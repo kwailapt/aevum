@@ -8,10 +8,17 @@
 # the allocator without pulling in the full aevum-core dependency tree.
 
 [package]
-name        = "landauer-allocator"
-version     = "0.1.0"
-edition     = "2021"
-description = "Landauer-on-Drop global allocator — counts bit erasures on every dealloc."
+name          = "landauer-allocator"
+version       = "0.1.0"
+edition       = "2021"
+description   = "Landauer-on-Drop global allocator — counts bit erasures on every dealloc."
+license       = "Apache-2.0"
+repository    = "https://github.com/kwailapt/aevum"
+homepage      = "https://mcp.aevum.network"
+documentation = "https://docs.rs/landauer-allocator"
+keywords      = ["landauer", "allocator", "thermodynamics", "energy", "physics"]
+categories    = ["memory-management", "science"]
+readme        = "README.md"
 
 [lints]
 workspace = true

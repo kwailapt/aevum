@@ -11,6 +11,7 @@
 [![Live Server](https://img.shields.io/badge/live-mcp.aevum.network-brightgreen)](https://mcp.aevum.network)
 [![pacr-types on crates.io](https://img.shields.io/crates/v/pacr-types)](https://crates.io/crates/pacr-types)
 [![causal-dag on crates.io](https://img.shields.io/crates/v/causal-dag)](https://crates.io/crates/causal-dag)
+[![landauer-allocator on crates.io](https://img.shields.io/crates/v/landauer-allocator)](https://crates.io/crates/landauer-allocator)
 
 ```json
 { "mcpServers": { "aevum": { "url": "https://mcp.aevum.network" } } }

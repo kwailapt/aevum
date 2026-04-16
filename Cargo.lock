@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "epsilon-engine"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "approx",
  "pacr-types",
