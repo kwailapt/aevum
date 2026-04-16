@@ -136,7 +136,7 @@ cargo build --release -p aevum-mcp-server
 |------|-------------|----------------|
 | `aevum_remember` | Store a causal memory. Runs ε-machine CSSR, extracts S_T/H_T, appends to DAG. | Memory with physics cost attached — not just "store text" |
 | `aevum_recall` | Retrieve by causal similarity (ρ-weighted S_T). Optional DAG traversal. | Recall by causal relevance, not keyword match |
-| `aevum_filter` | Distil high-entropy MCP responses to causal structure. | **90%+ token reduction** — extract signal from noise |
+| `aevum_filter` | Distil MCP responses to causal structure via ε-machine. | Strips repetitive/padded content ([benchmarks](#benchmarks)) |
 | `aevum_settle` | Record interaction, update ρ (causal return rate) in reputation index. | Agents that produce more structure than they consume get higher ρ |
 
 ### Try it now
@@ -153,6 +153,24 @@ bash deploy/paperclip-poc.sh https://mcp.aevum.network 30 2
 ---
 
 ## Architecture
+
+### Protocol Stack (the TCP/IP of AI agents)
+
+If you know TCP/IP, you already understand Aevum's architecture:
+
+```
+Internet                    Aevum
+─────────────────────────────────────────────────────────
+HTTP (semantics)      ↔     AgentCard (capabilities, pricing, identity)
+TCP  (reliable order) ↔     CTP — Causal Transport Protocol (Π DAG edges)
+IP   (routing + ttl)  ↔     TGP — Thermodynamic Gateway Protocol (Λ, Ω, Γ)
+```
+
+**TGP** is the outermost layer — like IP, it validates the packet before anything else. If the physics are implausible (Λ < 0, or energy < Landauer floor), the packet is dropped at Layer 1. The router never even parses the AgentCard.
+
+**CTP** ensures causal ordering via DAG edges (Π), not timestamps — because simultaneity is observer-dependent (special relativity). This is TCP's sequence numbers, but for causation.
+
+**AgentCard** is the HTTP of agents — a pure schema declaring capabilities, endpoints, and pricing. Zero execution logic. Any framework can read it.
 
 ### Three Pillars (enforced, not aspirational)
 
