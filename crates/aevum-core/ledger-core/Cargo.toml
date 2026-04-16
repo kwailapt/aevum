@@ -1,0 +1,7 @@
+[package]
+name = "ledger-core"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+memmap2 = "0.9.3"

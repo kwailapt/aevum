@@ -1,0 +1,20 @@
+[package]
+name        = "ets-probe"
+version     = "0.1.0"
+edition     = "2021"
+description = "Energy-Time-Space probe — measures the Ω resource triple for PACR records."
+
+# Pillar II. PACR field: Ω.
+# #![forbid(unsafe_code)] — hardware access via safe /proc reads and std::process.
+
+[features]
+# M1 Ultra 128 GB UMA — Apple-specific memory probe (macOS, no /proc).
+genesis_node = []
+# AWS Tokyo c7g.xlarge — Linux perf: /proc/self/statm for precise RSS.
+light_node   = []
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+
+[dev-dependencies]
+proptest = "1"

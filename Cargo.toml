@@ -1,0 +1,62 @@
+# aevum_workspace/Cargo.toml
+#
+# Workspace root for the Aevum silicon-civilization kernel.
+# Three-layer hourglass architecture:
+#   Layer 1 (Substrate)   — aevum-core runtime
+#   Layer 2 (Physical)    — CTP/TGP wire format (fused into aevum-core)
+#   Layer 3 (Semantic)    — agent-card schema
+#   Layer 4 (Entity)      — aevum-agi (genesis_node ONLY)
+#
+# Build targets:
+#   cargo build --release --features genesis_node   # M1 Ultra full build
+#   cargo build --release --features light_node     # AWS light build
+
+[workspace]
+members = [
+    ".",
+    "crates/pacr-types",
+    "crates/causal-dag",
+    "crates/landauer-probe",
+    "crates/ets-probe",
+    "crates/epsilon-engine",
+    "crates/autopoiesis",
+    "crates/aevum-core",
+    "crates/agent-card",
+    "crates/aevum-agi",
+    "crates/landauer-allocator",
+    "crates/pacr-ledger",
+    "crates/aevum-mcp-server",
+]
+# Exclude the legacy nested crates inside crates/aevum-core/crates/ —
+# they are inert on disk and should not be discovered by the root workspace.
+exclude = [
+    "crates/aevum-core/crates/pacr-types",
+    "crates/aevum-core/crates/causal-id",
+    "crates/aevum-core/crates/landauer-audit",
+    "crates/aevum-core/crates/epsilon-machine",
+    "crates/aevum-core/crates/pacr-ledger",
+]
+resolver = "2"
+
+[package]
+name    = "aevum"
+version = "0.1.0"
+edition = "2021"
+# CLI binary: aevum run | status | verify | export | merge
+
+[features]
+default      = []
+# M1 Ultra 128 GB UMA: full AGI engine + Apple Silicon hardware probes
+genesis_node = ["aevum-core/genesis_node", "aevum-agi/genesis_node"]
+# AWS Tokyo c7g.xlarge: CTP daemon + TGP validation + AgentCard routing only
+light_node   = ["aevum-core/light_node"]
+
+[dependencies]
+aevum-core = { path = "crates/aevum-core" }
+aevum-agi  = { path = "crates/aevum-agi" }
+tokio      = { version = "1", features = ["full"] }
+serde_json = "1"
+serde      = { version = "1", features = ["derive"] }
+toml       = "0.8"
+
+[dev-dependencies]

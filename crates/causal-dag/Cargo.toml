@@ -1,0 +1,18 @@
+[package]
+name        = "causal-dag"
+version     = "0.1.0"
+edition     = "2021"
+description = "Lock-free append-only causal DAG for Aevum PACR records."
+
+# Pillar I: lock-free (DashMap sharded), O(|Π|) append, O(1) lookup.
+# No Mutex, no RwLock in any hot path.
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+dashmap    = "6"
+smallvec   = { version = "1", features = ["serde"] }
+thiserror  = "1"
+
+[dev-dependencies]
+proptest = "1"
+bytes    = "1"

@@ -1,0 +1,14 @@
+# crates/landauer-allocator/Cargo.toml
+#
+# Pillar: II. PACR field: Λ.
+#
+# Standalone Landauer-on-Drop global allocator.
+# Zero dependencies — only std.
+# Extracted from aevum-core/src/allocator.rs so other crates can depend on
+# the allocator without pulling in the full aevum-core dependency tree.
+
+[package]
+name        = "landauer-allocator"
+version     = "0.1.0"
+edition     = "2021"
+description = "Landauer-on-Drop global allocator — counts bit erasures on every dealloc."

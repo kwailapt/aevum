@@ -1,0 +1,56 @@
+# crates/aevum-core/Cargo.toml
+#
+# Pillar: ALL. Aevum Core Runtime — Layer 1 (Substrate) + Layer 2 (Physical).
+#
+# This crate is the integration target for all Phase 0–4 crates.
+# It fuses CTP/TGP envelope processing, tokio async runtime, Landauer-on-Drop
+# allocator hook, and the Causal Settlement Oracle into a single deployable unit.
+#
+# Safety policy: #![deny(unsafe_code)] everywhere EXCEPT allocator.rs,
+# which carries #![allow(unsafe_code)] to implement GlobalAlloc.
+#
+# IMPORTANT: The legacy Cargo workspace that previously lived here
+# (with nested crates/pacr-types, crates/causal-id, etc.) has been
+# superseded by the root workspace at aevum_workspace/Cargo.toml.
+# Those nested crates are inert on disk; they are NOT compiled.
+
+[package]
+name        = "aevum-core"
+version     = "0.1.0"
+edition     = "2021"
+description = "Aevum Core Runtime — Landauer-on-Drop allocator, tokio runtime, TGP/CTP router, CSO."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default      = []
+genesis_node = ["ets-probe/genesis_node"]
+light_node   = ["ets-probe/light_node"]
+
+[dependencies]
+# ── Phase 0–4 workspace crates ────────────────────────────────────────────────
+pacr-types     = { path = "../pacr-types" }
+causal-dag     = { path = "../causal-dag" }
+landauer-probe = { path = "../landauer-probe" }
+ets-probe      = { path = "../ets-probe" }
+epsilon-engine = { path = "../epsilon-engine" }
+autopoiesis    = { path = "../autopoiesis" }
+
+# ── Async runtime ─────────────────────────────────────────────────────────────
+tokio = { version = "1", features = ["full"] }
+
+# ── Serialisation (ledger persistence) ───────────────────────────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+bytes    = { version = "1", features = ["serde"] }
+smallvec = { version = "1", features = ["serde"] }
+thiserror = "1"
+dashmap  = "6"
+axum     = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
+proptest = "1"

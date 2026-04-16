@@ -1,0 +1,203 @@
+{
+  "agent_id": "01J2PQRS6TUVW9XY4Z8A1B3C7D2",
+  "name": "Data Pipeline Agent",
+  "version": "2.1.0",
+  "capabilities": [
+    {
+      "id": "data.transform",
+      "description": "Apply a transformation pipeline to structured data (JSON, CSV, Parquet). Supports filtering, mapping, joining, and aggregation steps.",
+      "tags": ["data", "etl", "transform", "pipeline"],
+      "input_schema": {
+        "type": "object",
+        "required": ["source", "steps"],
+        "properties": {
+          "source": {
+            "type": "object",
+            "required": ["format", "data"],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": ["json", "csv", "parquet", "ndjson"]
+              },
+              "data": {
+                "type": "string",
+                "description": "Raw data payload (base64 for binary formats)"
+              },
+              "schema_hint": {
+                "type": "object",
+                "description": "Optional JSON Schema hint for the data format"
+              }
+            }
+          },
+          "steps": {
+            "type": "array",
+            "description": "Ordered list of transformation steps",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["op"],
+              "properties": {
+                "op": {
+                  "type": "string",
+                  "enum": ["filter", "map", "aggregate", "join", "sort", "limit", "rename", "drop"]
+                },
+                "args": {
+                  "type": "object",
+                  "description": "Operation-specific arguments"
+                }
+              }
+            }
+          },
+          "output_format": {
+            "type": "string",
+            "enum": ["json", "csv", "parquet", "ndjson"],
+            "default": "json"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["data", "row_count"],
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Transformed data payload (base64 for binary formats)"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["json", "csv", "parquet", "ndjson"]
+          },
+          "row_count": {
+            "type": "integer",
+            "description": "Number of rows in the output",
+            "minimum": 0
+          },
+          "bytes_processed": {
+            "type": "integer",
+            "description": "Total bytes read from source",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "data.validate",
+      "description": "Validate a data file against a JSON Schema or built-in constraints. Returns per-row errors.",
+      "tags": ["data", "validation", "quality"],
+      "input_schema": {
+        "type": "object",
+        "required": ["data", "format"],
+        "properties": {
+          "data": { "type": "string" },
+          "format": {
+            "type": "string",
+            "enum": ["json", "csv", "ndjson"]
+          },
+          "schema": {
+            "type": "object",
+            "description": "JSON Schema to validate each record against"
+          },
+          "stop_at_first_error": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["valid", "error_count"],
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "True only if zero validation errors found"
+          },
+          "error_count": { "type": "integer", "minimum": 0 },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "row": { "type": "integer" },
+                "field": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "data.profile",
+      "description": "Compute statistical profile of a dataset: cardinality, null rates, distributions, and outlier detection.",
+      "tags": ["data", "profiling", "statistics", "eda"],
+      "input_schema": {
+        "type": "object",
+        "required": ["data", "format"],
+        "properties": {
+          "data": { "type": "string" },
+          "format": {
+            "type": "string",
+            "enum": ["json", "csv", "parquet", "ndjson"]
+          },
+          "sample_rate": {
+            "type": "number",
+            "description": "Fraction of rows to sample (1.0 = full scan)",
+            "minimum": 0.01,
+            "maximum": 1.0,
+            "default": 1.0
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["columns"],
+        "properties": {
+          "row_count": { "type": "integer" },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "dtype": { "type": "string" },
+                "null_rate": { "type": "number" },
+                "cardinality": { "type": "integer" },
+                "min": {},
+                "max": {},
+                "mean": { "type": "number" },
+                "p50": {},
+                "p95": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": {
+    "protocol": "http",
+    "url": "https://pipeline.example.com/api/v2",
+    "health_url": "https://pipeline.example.com/health",
+    "auth": {
+      "scheme": "oauth2",
+      "token_url": "https://auth.example.com/oauth2/token"
+    }
+  },
+  "pricing": {
+    "base_cost_joules": 8.0e-19,
+    "estimated_latency_ms": 450.0,
+    "currency": "USD",
+    "cost_per_request": 0.0008
+  },
+  "metadata": {
+    "pacr:interaction_count": 512034,
+    "pacr:avg_latency_ms": 440.2,
+    "pacr:avg_cost_joules": 8.1e-19,
+    "pacr:reputation_score": 0.97,
+    "pacr:influence_rank": 0.064,
+    "pacr:critical_score": 0.042,
+    "max_payload_bytes": 104857600,
+    "supported_formats": ["json", "csv", "parquet", "ndjson"],
+    "parallelism": "auto"
+  }
+}

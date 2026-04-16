@@ -1,0 +1,47 @@
+# ── Rust build artefacts ─────────────────────────────────────────────────────
+target/
+*.bin
+*.bin.bak*
+
+# ── Secrets / private context (NEVER commit) ─────────────────────────────────
+.env
+CLAUDE.local.md
+*.pem
+*.key
+
+# ── Private / proprietary crates ─────────────────────────────────────────────
+crates/aevum-agi/
+
+# ── Deploy helpers (contain host-specific paths) ─────────────────────────────
+deploy/*.plist
+
+# ── Logs and runtime state ───────────────────────────────────────────────────
+*.log
+*.jsonl
+*.ledger
+.aevum/
+
+# ── Python legacy (prototype, pre-dates Rust rewrite) ────────────────────────
+__pycache__/
+*.pyc
+.venv/
+aevum_backup.py
+aevum_gateway.py
+aevum_ledger_udp.py
+aevum_ui.py
+tokio_clearinghouse/
+
+# ── Documentation working files ──────────────────────────────────────────────
+doc/
+
+# ── macOS / IDE ───────────────────────────────────────────────────────────────
+.DS_Store
+.obsidian/
+.qwen/
+
+# ── Misc workspace state ──────────────────────────────────────────────────────
+agi_workspace/
+candidate_pool/
+processing_factory/
+state_vault/
+checkpoint.txt

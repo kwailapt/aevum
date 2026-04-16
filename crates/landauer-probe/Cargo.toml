@@ -1,0 +1,15 @@
+[package]
+name        = "landauer-probe"
+version     = "0.1.0"
+edition     = "2021"
+description = "Landauer cost probe — computes Λ (theoretical energy floor) from bit-erasure counts."
+
+# Pillar II. PACR field: Λ.
+# #![forbid(unsafe_code)] — this is a trust-root-adjacent crate; no exceptions.
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+thiserror  = "1"
+
+[dev-dependencies]
+proptest = "1"

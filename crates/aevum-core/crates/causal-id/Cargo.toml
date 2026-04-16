@@ -1,0 +1,9 @@
+[package]
+name = "causal-id"
+version = "0.1.0"
+edition = "2021"
+description = "ULID-based CausalId generator for Aevum PACR records."
+
+[dependencies]
+pacr-types = { path = "../pacr-types" }
+thiserror = "1"
