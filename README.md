@@ -152,6 +152,32 @@ bash deploy/paperclip-poc.sh https://mcp.aevum.network 30 2
 
 ---
 
+## Works With Paperclip + claude-mem
+
+Aevum is the **physics layer** underneath Paperclip (coordination) and claude-mem (memory). They don't compete — they stack:
+
+```
+claude-mem   →  WHAT did the agent do?     (semantic summaries)
+Paperclip    →  WHO does what, HOW?        (org chart, budgets, heartbeats)
+Aevum        →  AT WHAT COST, and WHY?     (Landauer Λ, causal DAG, S_T/H_T)
+```
+
+Run all three simultaneously — zero code changes:
+
+```json
+{
+  "mcpServers": {
+    "claude-mem": { "command": "npx", "args": ["claude-mem"] },
+    "aevum":      { "url": "https://mcp.aevum.network" },
+    "paperclip":  { "command": "npx", "args": ["paperclipai"] }
+  }
+}
+```
+
+**→ [Full integration guide](docs/integration-paperclip-claude-mem.md)**
+
+---
+
 ## Architecture
 
 ### Protocol Stack (the TCP/IP of AI agents)

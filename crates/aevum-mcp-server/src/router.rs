@@ -119,7 +119,7 @@ fn tools_list(id: Value) -> McpResponse {
         },
         {
             "name": "aevum_filter",
-            "description": "Distil a high-entropy MCP response to its causal structure (S_T). Pipe output from Playwright, Firecrawl, Context7, or any MCP tool through this filter to strip H_T noise before passing to Claude — cuts token cost by 90%+.",
+            "description": "Distil an MCP response to its causal structure (S_T). Pipe output from Playwright, Firecrawl, Context7, claude-mem, Paperclip, or any MCP tool through this filter to strip repetitive/padded content before passing to Claude. 40-100% reduction on boilerplate; correctly retains dense content.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
