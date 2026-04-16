@@ -54,6 +54,22 @@ EXEC-*.md
 PATCH-*.md
 STRATEGY-*.md
 
+# ── TypeScript crates (not part of Rust workspace) ────────────────────────────
+crates/pacr-types-ts/
+
+# ── agent-card standalone repo files (separate GitHub repo) ───────────────────
+crates/agent-card/.github/
+crates/agent-card/.well-known/
+crates/agent-card/.gitignore
+crates/agent-card/CNAME
+crates/agent-card/FROZEN.md
+crates/agent-card/LICENSE
+crates/agent-card/README.md
+crates/agent-card/SPEC-CAUSAL-TOPOLOGY.md
+crates/agent-card/index.html
+crates/agent-card/schema.json
+crates/agent-card/validators/
+
 # ── Legacy prototypes (pre-dates Phase 0 rewrite) ────────────────────────────
 crates/aevum-core/genesis/
 crates/aevum-core/ledger-core/
