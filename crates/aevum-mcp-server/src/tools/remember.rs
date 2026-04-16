@@ -203,7 +203,12 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
     // ── 10. Advance last_id ───────────────────────────────────────────────────
     state.update_last_id(new_id);
 
-    // ── 11. Return structured result ──────────────────────────────────────────
+    // ── 11. SSN broadcast (Pillar III: S_T trend detection) ──────────────────
+    // SsnBroadcaster::observe is O(TREND_WINDOW) — never O(n) on total records.
+    // In stdio mode no receivers are attached; the send is a no-op.
+    state.ssn.observe(s_t, h_t);
+
+    // ── 12. Return structured result ──────────────────────────────────────────
     McpResponse::ok(
         id,
         serde_json::json!({

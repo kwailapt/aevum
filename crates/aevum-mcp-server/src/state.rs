@@ -33,6 +33,8 @@ use pacr_ledger::{PacrLedger, LedgerError};
 use aevum_core::CsoIndex;
 use tokio::sync::RwLock;
 
+use crate::resources::context::SsnBroadcaster;
+
 // ── ID counter ────────────────────────────────────────────────────────────────
 
 /// Per-process monotonic counter for the low 80 bits of generated CausalIds.
@@ -78,6 +80,11 @@ pub struct AppState {
     /// Lock-free (DashMap internals).
     pub cso: CsoIndex,
 
+    /// Structural State Network broadcaster.
+    /// Sends StateChange events to SSE subscribers after each record append.
+    /// In stdio mode receivers are absent; send() is a zero-cost no-op.
+    pub ssn: SsnBroadcaster,
+
     /// CausalId of the most recently appended record.
     /// New records set Π = {last_id}, forming a linear causal chain.
     /// `std::sync::Mutex<u128>` — never held across await points, held for nanoseconds.
@@ -97,6 +104,7 @@ impl AppState {
             ledger: tokio::sync::Mutex::new(ledger),
             s_t_index: RwLock::new(BTreeMap::new()),
             cso: CsoIndex::new(),
+            ssn: SsnBroadcaster::new(),
             last_id: Mutex::new(0), // CausalId::GENESIS
         }))
     }

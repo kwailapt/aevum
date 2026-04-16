@@ -48,7 +48,10 @@ async fn main() {
         }
         Transport::Http => {
             #[cfg(feature = "transport-http")]
-            transport::http::run(_port, Arc::clone(&app_state)).await;
+            {
+                let addr = format!("0.0.0.0:{_port}");
+                transport::http::run(&addr, Arc::clone(&app_state)).await;
+            }
             #[cfg(not(feature = "transport-http"))]
             eprintln!("http transport not compiled in (missing feature transport-http)");
         }

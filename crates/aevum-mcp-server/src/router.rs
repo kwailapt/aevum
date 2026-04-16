@@ -72,7 +72,7 @@ async fn dispatch_tool_call(req: McpRequest, state: Arc<AppState>) -> McpRespons
     match tool_name {
         "aevum_remember" => crate::tools::remember::handle(req.id, args, state).await,
         "aevum_recall"   => crate::tools::recall::handle(req.id, args, state).await,
-        "aevum_filter"   => crate::tools::filter::handle(req.id, args).await,
+        "aevum_filter"   => crate::tools::filter::handle(req.id, args, Arc::clone(&state)).await,
         "aevum_settle"   => crate::tools::settle::handle(req.id, args, state).await,
         _ => McpResponse::err(req.id, -32602, format!("unknown tool: {tool_name}")),
     }
@@ -140,4 +140,119 @@ fn initialize(id: Value) -> McpResponse {
         "capabilities": { "tools": {} },
         "serverInfo": { "name": "aevum-mcp-server", "version": "0.1.0" }
     }))
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    async fn test_state() -> Arc<AppState> {
+        let dir = tempdir().unwrap();
+        AppState::new(dir.path().join("router_test.bin")).await.unwrap()
+    }
+
+    fn make_req(method: &str, params: serde_json::Value) -> McpRequest {
+        McpRequest { jsonrpc: "2.0".into(), id: Value::Number(1.into()), method: method.to_owned(), params }
+    }
+
+    // ── dispatch ─────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn dispatch_unknown_method_returns_error_32601() {
+        let state = test_state().await;
+        let req = make_req("unknown/method", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        assert!(resp.error.is_some());
+        assert_eq!(resp.error.unwrap().code, -32601);
+    }
+
+    #[tokio::test]
+    async fn dispatch_initialize_returns_protocol_version() {
+        let state = test_state().await;
+        let req = make_req("initialize", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        assert!(resp.result.is_some());
+        let r = resp.result.unwrap();
+        assert_eq!(r["protocolVersion"], "2024-11-05");
+        assert!(r["capabilities"]["tools"].is_object());
+    }
+
+    #[tokio::test]
+    async fn dispatch_tools_list_returns_four_tools() {
+        let state = test_state().await;
+        let req = make_req("tools/list", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        let tools = resp.result.unwrap()["tools"].as_array().unwrap().to_owned();
+        assert_eq!(tools.len(), 4, "must expose exactly 4 tools");
+    }
+
+    #[tokio::test]
+    async fn tools_list_contains_all_tool_names() {
+        let state = test_state().await;
+        let req = make_req("tools/list", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        let tools = resp.result.unwrap()["tools"].as_array().unwrap().to_owned();
+        let names: Vec<&str> = tools.iter()
+            .filter_map(|t| t["name"].as_str())
+            .collect();
+        assert!(names.contains(&"aevum_remember"),  "missing aevum_remember");
+        assert!(names.contains(&"aevum_recall"),    "missing aevum_recall");
+        assert!(names.contains(&"aevum_filter"),    "missing aevum_filter");
+        assert!(names.contains(&"aevum_settle"),    "missing aevum_settle");
+    }
+
+    #[tokio::test]
+    async fn dispatch_unknown_tool_returns_error_32602() {
+        let state = test_state().await;
+        let req = make_req(
+            "tools/call",
+            serde_json::json!({ "name": "nonexistent", "arguments": {} }),
+        );
+        let resp = dispatch(req, state).await;
+        assert!(resp.error.is_some());
+        assert_eq!(resp.error.unwrap().code, -32602);
+    }
+
+    #[tokio::test]
+    async fn mcp_response_ok_has_no_error() {
+        let resp = McpResponse::ok(Value::Number(1.into()), serde_json::json!({ "x": 1 }));
+        assert!(resp.error.is_none());
+        assert_eq!(resp.result.unwrap()["x"], 1);
+    }
+
+    #[tokio::test]
+    async fn mcp_response_err_has_no_result() {
+        let resp = McpResponse::err(Value::Number(1.into()), -32700, "parse error");
+        assert!(resp.result.is_none());
+        let e = resp.error.unwrap();
+        assert_eq!(e.code, -32700);
+        assert!(e.message.contains("parse error"));
+    }
+
+    #[tokio::test]
+    async fn tools_list_each_tool_has_input_schema() {
+        let state = test_state().await;
+        let req = make_req("tools/list", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        let tools = resp.result.unwrap()["tools"].as_array().unwrap().to_owned();
+        for tool in &tools {
+            assert!(
+                tool.get("inputSchema").is_some(),
+                "tool {:?} missing inputSchema", tool["name"]
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn server_info_has_name_and_version() {
+        let state = test_state().await;
+        let req = make_req("initialize", serde_json::json!({}));
+        let resp = dispatch(req, state).await;
+        let r = resp.result.unwrap();
+        assert!(r["serverInfo"]["name"].is_string());
+        assert!(r["serverInfo"]["version"].is_string());
+    }
 }
