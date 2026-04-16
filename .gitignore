@@ -67,7 +67,6 @@ crates/agent-card/LICENSE
 crates/agent-card/README.md
 crates/agent-card/SPEC-CAUSAL-TOPOLOGY.md
 crates/agent-card/index.html
-crates/agent-card/schema.json
 crates/agent-card/validators/
 
 # ── Legacy prototypes (pre-dates Phase 0 rewrite) ────────────────────────────

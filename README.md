@@ -135,7 +135,7 @@ crates/
 ├── pacr-ledger/         Append-only persistent store, content-addressed by ι
 ├── autopoiesis/         Self-modification feedback: Γ_k ratio, dormancy, flood detection
 ├── aevum-core/          Runtime engine: pressure gauge, CSO settlement, routing
-├── agent-card/          Semantic waist — pure schema, zero execution
+├── agent-card/          Semantic waist — pure schema, zero execution ([spec](https://github.com/kwailapt/AgentCard))
 └── aevum-mcp-server/    MCP gateway: stdio + HTTP, Streamable HTTP 2025-03-26
 ```
 
