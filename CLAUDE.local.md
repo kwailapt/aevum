@@ -385,6 +385,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 | 5 | aevum-core (206 tests) + pressure_gauge extension | ✅ + 🔧 |
 | 6 | agent-card (229 tests) + GitHub 🌐 | ✅ |
 | 7 | aevum-agi: dual_engine, boundary_osmosis, causal_return, immune_response, rule_ir, pareto_mcts(stub) | ✅ |
+| 8 | aevum-mcp-server (72 tests): remember/recall/filter/settle, ledger replay, resources/read, traverse_depth, transport-stdio + transport-http | ✅ |
 
 🔧 = immune system extension (append-only, does not modify existing tests)
 
