@@ -1,0 +1,27 @@
+[package]
+name = "aevum-mcp-server"
+version = "0.1.0"
+edition = "2021"
+description = "Aevum MCP Gateway — Layer 2 external adapter. Dual-transport (stdio/http), ε-engine response distillation, PACR causal memory."
+
+[features]
+default = ["transport-stdio"]
+transport-stdio = []
+transport-http  = ["dep:axum", "dep:tower-http"]
+
+[dependencies]
+pacr-types     = { path = "../pacr-types" }
+causal-dag     = { path = "../causal-dag" }
+epsilon-engine = { path = "../epsilon-engine" }
+pacr-ledger    = { path = "../pacr-ledger" }
+aevum-core     = { path = "../aevum-core" }
+# Note: do NOT add landauer-allocator — aevum-core already sets #[global_allocator].
+# Adding it here would cause a duplicate global allocator link error.
+
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tokio       = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "sync"] }
+bytes       = "1"
+
+axum        = { version = "0.8", optional = true }
+tower-http  = { version = "0.6", features = ["cors"], optional = true }

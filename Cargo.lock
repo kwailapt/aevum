@@ -53,6 +53,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "aevum-mcp-server"
+version = "0.1.0"
+dependencies = [
+ "aevum-core",
+ "axum",
+ "bytes",
+ "causal-dag",
+ "epsilon-engine",
+ "pacr-ledger",
+ "pacr-types",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower-http",
+]
+
+[[package]]
 name = "agent-card"
 version = "0.1.0"
 dependencies = [
@@ -564,6 +581,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
+name = "pacr-ledger"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "pacr-types",
+ "serde_json",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "pacr-types"
 version = "0.1.0"
 dependencies = [
@@ -1022,6 +1050,20 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower-http"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
+dependencies = [
+ "bitflags",
+ "bytes",
+ "http",
+ "pin-project-lite",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]

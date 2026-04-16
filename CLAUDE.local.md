@@ -384,7 +384,7 @@ If no physical law forces it → make it configurable, not hardcoded.
 | 4 | autopoiesis (42 tests) + flood_detector extension | ✅ + 🔧 |
 | 5 | aevum-core (206 tests) + pressure_gauge extension | ✅ + 🔧 |
 | 6 | agent-card (229 tests) + GitHub 🌐 | ✅ |
-| 7 | aevum-agi: dual_engine, boundary_osmosis, causal_return, immune_response, rule_ir, pareto_mcts(stub) | ⬜ |
+| 7 | aevum-agi: dual_engine, boundary_osmosis, causal_return, immune_response, rule_ir, pareto_mcts(stub) | ✅ |
 
 🔧 = immune system extension (append-only, does not modify existing tests)
 
