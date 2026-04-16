@@ -2,13 +2,17 @@
 //
 // Pillar: II. PACR field: Λ/Ω.
 // aevum_settle: Paperclip agent interaction → CsoIndex::record_interaction → ρ update.
+// Week 2 implementation.
 
 #![forbid(unsafe_code)]
 
+use std::sync::Arc;
+
 use crate::router::McpResponse;
+use crate::state::AppState;
 use serde_json::Value;
 
-pub async fn handle(id: Value, args: Value) -> McpResponse {
+pub async fn handle(id: Value, args: Value, _state: Arc<AppState>) -> McpResponse {
     let _source = match args.get("source_agent_id").and_then(|v| v.as_str()) {
         Some(s) => s.to_owned(),
         None => return McpResponse::err(id, -32602, "missing required argument: source_agent_id"),

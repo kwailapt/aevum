@@ -3,7 +3,7 @@
 //! Landauer's principle (1961): any logically irreversible computation — i.e.
 //! any operation that erases information — must dissipate at least
 //!
-//!   E_min = k_B × T × ln(2)   [joules per erased bit]
+//!   `E_min` = `k_B` × T × ln(2)   [joules per erased bit]
 //!
 //! into the environment as heat.  This is a corollary of the Second Law of
 //! Thermodynamics, not an engineering limitation.
@@ -24,9 +24,9 @@ pub const K_B: f64 = 1.380_649e-23;
 pub const H_BAR: f64 = 1.054_571_817e-34;
 
 /// Landauer floor at 300 K room temperature (J per erased bit).
-/// E_min = k_B × 300 K × ln(2) = 1.380_649e-23 × 300 × ln(2) ≈ 2.870_979 × 10⁻²¹ J
+/// `E_min` = `k_B` × 300 K × ln(2) = 1.380_649e-23 × 300 × ln(2) ≈ `2.870_979` × 10⁻²¹ J
 ///
-/// Derived from the 2019 SI exact value of k_B.
+/// Derived from the 2019 SI exact value of `k_B`.
 /// The previously cited value of 2.854e-21 was a rough approximation.
 pub const LANDAUER_JOULES_300K: f64 = 2.870_979e-21;
 

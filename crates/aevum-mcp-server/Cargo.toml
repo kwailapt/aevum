@@ -18,10 +18,15 @@ aevum-core     = { path = "../aevum-core" }
 # Note: do NOT add landauer-allocator — aevum-core already sets #[global_allocator].
 # Adding it here would cause a duplicate global allocator link error.
 
-serde       = { version = "1", features = ["derive"] }
-serde_json  = "1"
-tokio       = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "sync"] }
-bytes       = "1"
+serde         = { version = "1", features = ["derive"] }
+serde_json    = "1"
+tokio         = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "sync"] }
+bytes         = "1"
+ordered-float = "4"
+smallvec      = { version = "1", features = ["serde"] }
 
 axum        = { version = "0.8", optional = true }
 tower-http  = { version = "0.6", features = ["cors"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"

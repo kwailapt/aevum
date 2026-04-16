@@ -4,16 +4,16 @@
 //! any data stream admits a unique decomposition into two inseparable projections
 //! of the same ε-machine:
 //!
-//!   S_T — statistical complexity (bits)
+//!   `S_T` — statistical complexity (bits)
 //!         Minimum causal-state information needed to optimally predict the stream.
-//!         Rising S_T → the system is discovering learnable structure.
+//!         Rising `S_T` → the system is discovering learnable structure.
 //!
-//!   H_T — entropy rate (bits per symbol)
+//!   `H_T` — entropy rate (bits per symbol)
 //!         Residual unpredictability that cannot be further compressed.
-//!         Rising H_T → the system is encountering irreducible noise.
+//!         Rising `H_T` → the system is encountering irreducible noise.
 //!
 //! These two quantities are OBSERVER-DEPENDENT (the observer's computational
-//! budget T_budget determines the ε-machine approximation order) and
+//! budget `T_budget` determines the ε-machine approximation order) and
 //! INSEPARABLE — removing either one from the record permanently loses
 //! information that cannot be recovered from the other.
 
@@ -21,27 +21,27 @@ use crate::estimate::Estimate;
 
 // ── Core type ─────────────────────────────────────────────────────────────────
 
-/// The cognitive split Γ = (S_T, H_T): intrinsic information structure of the
+/// The cognitive split Γ = (`S_T`, `H_T`): intrinsic information structure of the
 /// processed data stream, as computed by the ε-machine approximation.
 ///
 /// PACR field Γ.  Derived from Pillar III (computational mechanics).
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CognitiveSplit {
-    /// Statistical complexity S_T (bits).
+    /// Statistical complexity `S_T` (bits).
     /// Minimum information needed to optimally predict the stream.
     pub statistical_complexity: Estimate<f64>,
 
-    /// Entropy rate H_T (bits per symbol).
+    /// Entropy rate `H_T` (bits per symbol).
     /// Residual unpredictability even with the optimal predictor.
     pub entropy_rate: Estimate<f64>,
 }
 
 impl CognitiveSplit {
-    /// Structure-to-noise ratio: S_T / H_T.
+    /// Structure-to-noise ratio: `S_T` / `H_T`.
     ///
     /// - **High** → structured, predictable stream (e.g. chess move sequences).
     /// - **Low** → simple but random stream (e.g. fair-coin outputs).
-    /// - `None` → H_T ≈ 0, stream is fully deterministic; ratio is effectively ∞.
+    /// - `None` → `H_T` ≈ 0, stream is fully deterministic; ratio is effectively ∞.
     #[must_use]
     pub fn structure_noise_ratio(&self) -> Option<f64> {
         if self.entropy_rate.point.abs() < f64::EPSILON {
@@ -50,11 +50,11 @@ impl CognitiveSplit {
         Some(self.statistical_complexity.point / self.entropy_rate.point)
     }
 
-    /// Returns `true` when S_T > H_T (or H_T ≈ 0), indicating a stream with
+    /// Returns `true` when `S_T` > `H_T` (or `H_T` ≈ 0), indicating a stream with
     /// more learnable structure than irreducible randomness.
     #[must_use]
     pub fn is_structured(&self) -> bool {
-        self.structure_noise_ratio().map_or(true, |r| r > 1.0)
+        self.structure_noise_ratio().is_none_or(|r| r > 1.0)
     }
 }
 

@@ -5,11 +5,14 @@
 
 #![forbid(unsafe_code)]
 
+use std::sync::Arc;
+
 use crate::router::{dispatch, McpRequest, McpResponse};
+use crate::state::AppState;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-pub async fn run() {
+pub async fn run(state: Arc<AppState>) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
     let mut reader = BufReader::new(stdin);
@@ -33,7 +36,7 @@ pub async fn run() {
         }
 
         let response = match serde_json::from_str::<McpRequest>(trimmed) {
-            Ok(req) => dispatch(req).await,
+            Ok(req) => dispatch(req, Arc::clone(&state)).await,
             Err(e) => McpResponse::err(
                 Value::Null,
                 -32700,

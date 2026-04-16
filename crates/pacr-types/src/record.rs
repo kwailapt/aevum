@@ -66,7 +66,7 @@ pub type PredecessorSet = SmallVec<[CausalId; 4]>;
 
 /// Opaque payload — the semantic content of the computation event.
 ///
-/// PACR does not interpret this field.  Upper layers (AgentCard, etc.) define
+/// PACR does not interpret this field.  Upper layers (`AgentCard`, etc.) define
 /// their own schemas within P.  Zero-copy via `bytes::Bytes`.
 pub type Payload = bytes::Bytes;
 
@@ -178,12 +178,12 @@ pub enum ValidationIssue {
     #[error("Landauer cost cannot be negative")]
     NegativeLandauer,
 
-    /// Statistical complexity S_T is negative — information is non-negative.
-    #[error("statistical complexity S_T cannot be negative")]
+    /// Statistical complexity `S_T` is negative — information is non-negative.
+    #[error("statistical complexity `S_T` cannot be negative")]
     NegativeComplexity,
 
-    /// Entropy rate H_T is negative — entropy is non-negative.
-    #[error("entropy rate H_T cannot be negative")]
+    /// Entropy rate `H_T` is negative — entropy is non-negative.
+    #[error("entropy rate `H_T` cannot be negative")]
     NegativeEntropyRate,
 
     /// Record lists itself as a causal predecessor — creates a causal loop.
