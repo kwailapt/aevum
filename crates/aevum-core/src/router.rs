@@ -104,7 +104,7 @@ impl RouterDecision {
 /// Layer 1.5: thermodynamic pressure gauge — rejects envelopes when aggregate
 /// Λ throughput exceeds the configured power budget.
 pub struct Router {
-    dag:            Arc<CausalDag>,
+    dag: Arc<CausalDag>,
     pressure_gauge: ThermodynamicPressureGauge,
 }
 
@@ -124,7 +124,10 @@ impl Router {
     /// Creates a router with an explicit thermodynamic pressure gauge.
     #[must_use]
     pub fn with_pressure_gauge(dag: Arc<CausalDag>, gauge: ThermodynamicPressureGauge) -> Self {
-        Self { dag, pressure_gauge: gauge }
+        Self {
+            dag,
+            pressure_gauge: gauge,
+        }
     }
 
     /// Validate a PACR record through all three layers.
@@ -139,7 +142,10 @@ impl Router {
         }
 
         // ── Layer 1.5: Thermodynamic Pressure ────────────────────────────────
-        if self.pressure_gauge.should_throttle(record.landauer_cost.point) {
+        if self
+            .pressure_gauge
+            .should_throttle(record.landauer_cost.point)
+        {
             return RouterDecision::Rejected(RejectionReason::ThrottleExceeded);
         }
 
@@ -172,7 +178,7 @@ fn check_tgp(r: &PacrRecord) -> Option<RejectionReason> {
     // E ≥ Λ (Landauer's principle)
     if r.resources.energy.point < r.landauer_cost.point {
         return Some(RejectionReason::EnergyBelowLandauer {
-            actual_j:   r.resources.energy.point,
+            actual_j: r.resources.energy.point,
             landauer_j: r.landauer_cost.point,
         });
     }
@@ -224,7 +230,7 @@ fn check_ctp(r: &PacrRecord, dag: &CausalDag) -> Option<RejectionReason> {
         }
         if !dag.contains(&pred) {
             return Some(RejectionReason::MissingPredecessor {
-                child:   r.id,
+                child: r.id,
                 missing: pred,
             });
         }
@@ -249,12 +255,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(4096.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(4096.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(1.0),
-                entropy_rate:           Estimate::exact(0.9),
+                entropy_rate: Estimate::exact(0.9),
             })
             .payload(Bytes::from_static(b"test"))
             .build()
@@ -287,12 +293,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-10)) // huge floor
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-20), // energy < floor
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -313,12 +319,12 @@ mod tests {
             .landauer_cost(Estimate::exact(-1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -339,12 +345,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(-1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(-1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -368,12 +374,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -395,12 +401,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()
@@ -433,12 +439,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::new())
             .build()

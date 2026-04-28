@@ -40,6 +40,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 use pacr_types::{CausalId, PacrRecord, ValidationIssue};
 use std::collections::HashMap;
@@ -449,10 +477,7 @@ mod tests {
         ledger.allow_physics_violations(true);
         let r = make_record(42, smallvec![CausalId::GENESIS]);
         ledger.append(r.clone()).unwrap();
-        assert!(matches!(
-            ledger.append(r),
-            Err(LedgerError::DuplicateId(_))
-        ));
+        assert!(matches!(ledger.append(r), Err(LedgerError::DuplicateId(_))));
     }
 
     #[test]
@@ -511,15 +536,17 @@ mod tests {
         let mut ledger = PacrLedger::open(&path).unwrap();
         ledger.allow_physics_violations(true);
 
-        ledger.append(make_record(10, smallvec![CausalId::GENESIS])).unwrap();
-        ledger.append(make_record(20, smallvec![CausalId(10)])).unwrap();
-        ledger.append(make_record(30, smallvec![CausalId(20)])).unwrap();
+        ledger
+            .append(make_record(10, smallvec![CausalId::GENESIS]))
+            .unwrap();
+        ledger
+            .append(make_record(20, smallvec![CausalId(10)]))
+            .unwrap();
+        ledger
+            .append(make_record(30, smallvec![CausalId(20)]))
+            .unwrap();
 
-        let ids: Vec<u128> = ledger
-            .iter()
-            .unwrap()
-            .map(|r| r.unwrap().id.0)
-            .collect();
+        let ids: Vec<u128> = ledger.iter().unwrap().map(|r| r.unwrap().id.0).collect();
 
         assert_eq!(ids, vec![10, 20, 30]);
     }

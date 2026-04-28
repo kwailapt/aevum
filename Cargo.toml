@@ -38,6 +38,33 @@ exclude = [
 ]
 resolver = "2"
 
+# ── Workspace-level lint policy ───────────────────────────────────────────────
+# Physics code requires f64 ↔ integer casts. These pedantic lints are
+# inappropriate for scientific computing and are allowed workspace-wide.
+#
+# 6 original (from GitHub open-source release) + 8 added for rustc 1.94.0 compat.
+[workspace.lints.clippy]
+# Original 6 — physics-justified allowances
+cast_precision_loss    = "allow"  # u64 → f64 standard in physics
+cast_possible_truncation = "allow" # f64 → u8 in symbolization (intentional binning)
+cast_sign_loss         = "allow"  # f64 → usize in array indexing
+cast_possible_wrap     = "allow"  # usize → u8 for symbol alphabets
+similar_names          = "allow"  # s_t / h_t / c_mu are domain-standard names
+doc_markdown           = "allow"  # k_B, S_T, H_T are physics notation, not code
+# Added for rustc 1.94.0+ — new pedantic lints incompatible with scientific code
+unreadable_literal     = "allow"  # hex constants (e.g., xorshift seeds)
+redundant_closure      = "allow"  # closure-to-function in test helper
+unwrap_or_default      = "allow"  # or_insert_with → or_default stylistic choice
+doc_overindented_list_items = "allow" # ASCII diagrams in doc comments
+cloned_instead_of_copied = "allow" # cloned() on Copy types in generic context
+needless_pass_by_value = "allow"  # Arc/&T in async fn signatures
+cast_lossless          = "allow"  # u32→f64 via as (alternative: f64::from)
+module_name_repetitions = "allow" # redundant module names in type paths
+iter_without_iter       = "allow"  # method named `iter` on non-Iterator type
+unnested_or_patterns    = "allow"  # match arm or-patterns in nested types
+let_underscore_untyped  = "allow"  # let _ = in test helper setup
+manual_let_else        = "allow"  # stylistic preference for match over let-else
+
 [package]
 name    = "aevum"
 version = "0.1.0"

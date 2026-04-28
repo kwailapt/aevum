@@ -21,6 +21,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 use crate::complexity::counts_to_probs;
 use crate::cssr::{run_cssr, CausalState};
@@ -62,13 +90,21 @@ impl CpuBootstrap {
     /// Create with explicit parameters.
     #[must_use]
     pub fn new(max_depth: usize, alpha: f64, alphabet_size: usize) -> Self {
-        Self { max_depth, alpha, alphabet_size }
+        Self {
+            max_depth,
+            alpha,
+            alphabet_size,
+        }
     }
 }
 
 impl Default for CpuBootstrap {
     fn default() -> Self {
-        Self { max_depth: 4, alpha: 0.001, alphabet_size: 2 }
+        Self {
+            max_depth: 4,
+            alpha: 0.001,
+            alphabet_size: 2,
+        }
     }
 }
 
@@ -116,14 +152,18 @@ impl MetalBootstrap {
     /// Create with explicit parameters.
     #[must_use]
     pub fn new(max_depth: usize, alpha: f64, alphabet_size: usize) -> Self {
-        Self { inner: CpuBootstrap::new(max_depth, alpha, alphabet_size) }
+        Self {
+            inner: CpuBootstrap::new(max_depth, alpha, alphabet_size),
+        }
     }
 }
 
 #[cfg(feature = "genesis_node")]
 impl Default for MetalBootstrap {
     fn default() -> Self {
-        Self { inner: CpuBootstrap::default() }
+        Self {
+            inner: CpuBootstrap::default(),
+        }
     }
 }
 
@@ -145,7 +185,8 @@ fn empirical_pi(states: &[CausalState], symbols: &[u8], max_depth: usize) -> Vec
     let n = symbols.len();
 
     // Build a lookup: history bytes → state id.
-    let mut assignment: std::collections::HashMap<Vec<u8>, usize> = std::collections::HashMap::new();
+    let mut assignment: std::collections::HashMap<Vec<u8>, usize> =
+        std::collections::HashMap::new();
     for s in states {
         for h in &s.histories {
             assignment.insert(h.clone(), s.id);
@@ -186,7 +227,11 @@ fn resample_states(states: &[CausalState], rng: &mut Xorshift64) -> Vec<CausalSt
                 let sym = rng.sample_categorical(&probs);
                 new_counts[sym] += 1;
             }
-            CausalState { id: s.id, pooled: new_counts, histories: s.histories.clone() }
+            CausalState {
+                id: s.id,
+                pooled: new_counts,
+                histories: s.histories.clone(),
+            }
         })
         .collect()
 }
@@ -205,7 +250,11 @@ fn compute_ch(states: &[CausalState], pi: &[f64]) -> (f64, f64) {
         .zip(pi.iter())
         .map(|(s, &pi_i)| {
             let probs = counts_to_probs(&s.pooled);
-            let h: f64 = probs.iter().filter(|&&p| p > 1e-300).map(|&p| -p * p.log2()).sum();
+            let h: f64 = probs
+                .iter()
+                .filter(|&&p| p > 1e-300)
+                .map(|&p| -p * p.log2())
+                .sum();
             pi_i * h
         })
         .sum();
@@ -218,7 +267,11 @@ struct Xorshift64(u64);
 
 impl Xorshift64 {
     fn new(seed: u64) -> Self {
-        Self(if seed == 0 { 0xcafe_babe_1234_5678 } else { seed })
+        Self(if seed == 0 {
+            0xcafe_babe_1234_5678
+        } else {
+            seed
+        })
     }
 
     fn next_u64(&mut self) -> u64 {

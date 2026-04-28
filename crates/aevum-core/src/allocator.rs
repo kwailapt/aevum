@@ -133,10 +133,7 @@ mod tests {
         drop(_v);
         let after = bits_erased();
         // At minimum 4 KiB × 8 bits = 32 768 bits should have been counted.
-        assert!(
-            after >= before,
-            "after={after} should be ≥ before={before}"
-        );
+        assert!(after >= before, "after={after} should be ≥ before={before}");
     }
 
     #[test]

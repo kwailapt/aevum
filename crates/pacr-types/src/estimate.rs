@@ -40,14 +40,22 @@ impl<T: PartialOrd + Copy + fmt::Display> Estimate<T> {
         if lower > point || point > upper {
             return Err(EstimateError::InvalidBounds);
         }
-        Ok(Self { point, lower, upper })
+        Ok(Self {
+            point,
+            lower,
+            upper,
+        })
     }
 
     /// Creates an exact estimate with zero uncertainty.
     /// Use for quantities known with mathematical certainty (e.g. counting).
     #[must_use]
     pub fn exact(value: T) -> Self {
-        Self { point: value, lower: value, upper: value }
+        Self {
+            point: value,
+            lower: value,
+            upper: value,
+        }
     }
 }
 
@@ -89,7 +97,11 @@ impl Estimate<f64> {
         let half_width = (self.upper - self.lower) * 0.5 * factor;
         let lower = (self.point - half_width).min(self.lower);
         let upper = (self.point + half_width).max(self.upper);
-        Self { point: self.point, lower, upper }
+        Self {
+            point: self.point,
+            lower,
+            upper,
+        }
     }
 }
 

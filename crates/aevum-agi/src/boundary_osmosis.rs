@@ -60,10 +60,10 @@ impl BoundaryOsmoticPressure {
     #[must_use]
     pub fn new(mem_ceiling: u64) -> Self {
         Self {
-            mem_used:       AtomicU64::new(0),               // plain bytes count
+            mem_used: AtomicU64::new(0), // plain bytes count
             mem_ceiling,
             metabolic_rate: AtomicU64::new(0_f64.to_bits()), // f64 bits
-            inflow_rate:    AtomicU64::new(0_f64.to_bits()), // f64 bits
+            inflow_rate: AtomicU64::new(0_f64.to_bits()),    // f64 bits
         }
     }
 
@@ -99,7 +99,7 @@ impl BoundaryOsmoticPressure {
         };
 
         let metabolic = f64::from_bits(self.metabolic_rate.load(Ordering::Relaxed));
-        let inflow    = f64::from_bits(self.inflow_rate.load(Ordering::Relaxed));
+        let inflow = f64::from_bits(self.inflow_rate.load(Ordering::Relaxed));
 
         let flow_pressure = if metabolic > 0.0 {
             ((inflow - metabolic) / (metabolic + 1.0)).max(0.0)
@@ -148,8 +148,8 @@ fn xorshift64(state: u64) -> u64 {
 fn update_ema(atom: &AtomicU64, new_obs: f64, alpha: f64) {
     loop {
         let old_bits = atom.load(Ordering::Relaxed);
-        let old_val  = f64::from_bits(old_bits);
-        let new_val  = alpha * new_obs + (1.0 - alpha) * old_val;
+        let old_val = f64::from_bits(old_bits);
+        let new_val = alpha * new_obs + (1.0 - alpha) * old_val;
         let new_bits = new_val.to_bits();
         if atom
             .compare_exchange(old_bits, new_bits, Ordering::Relaxed, Ordering::Relaxed)
@@ -180,7 +180,10 @@ mod tests {
         let v = BoundaryOsmoticPressure::new(ceiling);
         v.update_mem_used(900_000_000); // 90% used
         let s = v.contraction_signal();
-        assert!(s > 0.95, "signal={s} should exceed 0.95 at 90% memory usage");
+        assert!(
+            s > 0.95,
+            "signal={s} should exceed 0.95 at 90% memory usage"
+        );
     }
 
     #[test]
@@ -206,7 +209,10 @@ mod tests {
         v.update_inflow_rate(1000.0);
         v.update_metabolic_rate(10.0); // inflow >> metabolic
         let s_high_flow = v.contraction_signal();
-        assert!(s_high_flow > s_no_flow, "high inflow should increase signal");
+        assert!(
+            s_high_flow > s_no_flow,
+            "high inflow should increase signal"
+        );
     }
 
     #[test]
@@ -214,7 +220,10 @@ mod tests {
         let v = BoundaryOsmoticPressure::new(1_000_000_000);
         // With near-zero signal, should_reject should almost never fire
         let rejections = (0..1000).filter(|_| v.should_reject()).count();
-        assert!(rejections < 100, "too many rejections at zero pressure: {rejections}");
+        assert!(
+            rejections < 100,
+            "too many rejections at zero pressure: {rejections}"
+        );
     }
 
     #[test]

@@ -40,7 +40,10 @@ impl ImmuneResponse {
     /// Create a new immune response handler.
     #[must_use]
     pub fn new() -> Self {
-        Self { rule_ir: RuleIr::new(), ban_seq: 0 }
+        Self {
+            rule_ir: RuleIr::new(),
+            ban_seq: 0,
+        }
     }
 
     /// Process a [`FloodVerdict`] and issue a ban if a flood is detected.
@@ -51,7 +54,10 @@ impl ImmuneResponse {
     /// `None` if the verdict was `Normal` or the ban failed validation.
     #[cfg(feature = "genesis_node")]
     pub fn process_verdict(&mut self, verdict: &FloodVerdict) -> Option<CausalId> {
-        let FloodVerdict::FloodDetected { dominant_source, .. } = verdict else {
+        let FloodVerdict::FloodDetected {
+            dominant_source, ..
+        } = verdict
+        else {
             return None;
         };
         match self.build_and_apply_ban(*dominant_source) {
@@ -97,12 +103,12 @@ impl ImmuneResponse {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::from(payload))
             .build()
@@ -141,7 +147,7 @@ mod tests {
         let attacker = CausalId(0x1234_u128);
         let verdict = FloodVerdict::FloodDetected {
             dominant_source: attacker,
-            concentration:   90,
+            concentration: 90,
         };
         let banned = ir.process_verdict(&verdict);
         assert_eq!(banned, Some(attacker));
@@ -156,7 +162,7 @@ mod tests {
         for i in 0..3_u128 {
             let verdict = FloodVerdict::FloodDetected {
                 dominant_source: CausalId(i + 1),
-                concentration:   85,
+                concentration: 85,
             };
             ir.process_verdict(&verdict);
         }

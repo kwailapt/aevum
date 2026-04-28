@@ -37,11 +37,7 @@ pub async fn run(state: Arc<AppState>) {
 
         let response = match serde_json::from_str::<McpRequest>(trimmed) {
             Ok(req) => dispatch(req, Arc::clone(&state)).await,
-            Err(e) => McpResponse::err(
-                Value::Null,
-                -32700,
-                format!("parse error: {e}"),
-            ),
+            Err(e) => McpResponse::err(Value::Null, -32700, format!("parse error: {e}")),
         };
 
         let mut out = serde_json::to_string(&response).unwrap_or_default();

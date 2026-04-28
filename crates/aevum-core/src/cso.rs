@@ -65,22 +65,22 @@ pub type AgentId = CausalId;
 #[derive(Debug, Clone)]
 struct AgentStats {
     /// EMA of the causal return rate ρ.
-    rho_ema:              f64,
+    rho_ema: f64,
     /// Total number of interactions observed.
-    total_interactions:   u64,
+    total_interactions: u64,
     /// Number of interactions with ρ > 0 (positive causal impact).
     success_interactions: u64,
     /// EMA of the per-interaction quality signal (1.0 on success, 0.0 on failure).
-    latency_ema:          f64,
+    latency_ema: f64,
 }
 
 impl AgentStats {
     fn new() -> Self {
         Self {
-            rho_ema:              0.0,
-            total_interactions:   0,
+            rho_ema: 0.0,
+            total_interactions: 0,
             success_interactions: 0,
-            latency_ema:          0.0,
+            latency_ema: 0.0,
         }
     }
 
@@ -124,9 +124,7 @@ impl AgentStats {
 
     /// Weighted reputation composite.
     fn reputation_score(&self) -> f64 {
-        0.4 * self.normalized_rho()
-            + 0.3 * self.success_rate()
-            + 0.3 * self.latency_score()
+        0.4 * self.normalized_rho() + 0.3 * self.success_rate() + 0.3 * self.latency_score()
     }
 }
 
@@ -146,7 +144,9 @@ impl CsoIndex {
     /// Create a new, empty CSO index.
     #[must_use]
     pub fn new() -> Self {
-        Self { rho_index: DashMap::new() }
+        Self {
+            rho_index: DashMap::new(),
+        }
     }
 
     /// Update the ρ EMA for `agent` with a new raw ρ value.
@@ -166,11 +166,11 @@ impl CsoIndex {
     /// source agent's stats.  Silently ignores calls where `source_lambda ≤ 0`.
     pub fn record_interaction(
         &self,
-        source:        AgentId,
-        target:        AgentId,
+        source: AgentId,
+        target: AgentId,
         source_lambda: f64,
-        phi_before:    f64,
-        phi_after:     f64,
+        phi_before: f64,
+        phi_after: f64,
     ) {
         if source_lambda <= 0.0 {
             return;
@@ -257,10 +257,10 @@ impl Default for CsoIndex {
 /// Response body for `GET /cso/reputation/{agent_id}`.
 #[derive(Debug, Serialize)]
 pub struct ReputationResponse {
-    pub agent_id:         u128,
-    pub rho:              f64,
+    pub agent_id: u128,
+    pub rho: f64,
     pub reputation_score: f64,
-    pub rank:             usize,
+    pub rank: usize,
 }
 
 /// Response body for `GET /cso/leaderboard`.
@@ -272,27 +272,27 @@ pub struct LeaderboardResponse {
 /// One row in the leaderboard response.
 #[derive(Debug, Serialize)]
 pub struct LeaderboardEntry {
-    pub agent_id:         u128,
+    pub agent_id: u128,
     pub reputation_score: f64,
 }
 
 /// Request body for `POST /cso/record_interaction`.
 #[derive(Debug, Deserialize)]
 pub struct RecordInteractionRequest {
-    pub source:        u128,
-    pub target:        u128,
+    pub source: u128,
+    pub target: u128,
     pub source_lambda: f64,
-    pub phi_before:    f64,
-    pub phi_after:     f64,
+    pub phi_before: f64,
+    pub phi_after: f64,
 }
 
 // ── Axum HTTP handlers ────────────────────────────────────────────────────────
 
 use axum::{
-    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
+    Json,
 };
 
 /// `GET /cso/reputation/{agent_id}`
@@ -313,9 +313,9 @@ pub async fn handle_get_reputation(
     }
     let resp = ReputationResponse {
         agent_id,
-        rho:              idx.get_rho(&agent),
+        rho: idx.get_rho(&agent),
         reputation_score: idx.reputation_score(&agent),
-        rank:             idx.rank(&agent),
+        rank: idx.rank(&agent),
     };
     (StatusCode::OK, Json(resp)).into_response()
 }
@@ -323,14 +323,12 @@ pub async fn handle_get_reputation(
 /// `GET /cso/leaderboard`
 ///
 /// Returns the top-10 agents by reputation score.
-pub async fn handle_get_leaderboard(
-    State(idx): State<Arc<CsoIndex>>,
-) -> impl IntoResponse {
+pub async fn handle_get_leaderboard(State(idx): State<Arc<CsoIndex>>) -> impl IntoResponse {
     let agents: Vec<LeaderboardEntry> = idx
         .leaderboard(10)
         .into_iter()
         .map(|(id, score)| LeaderboardEntry {
-            agent_id:         id.0,
+            agent_id: id.0,
             reputation_score: score,
         })
         .collect();
@@ -360,10 +358,10 @@ pub async fn handle_record_interaction(
 /// The CSO's verdict when settling two competing proposals.
 #[derive(Debug, Clone)]
 pub struct SettlementOutcome {
-    pub winner:       CausalId,
-    pub loser:        CausalId,
+    pub winner: CausalId,
+    pub loser: CausalId,
     pub winner_depth: usize,
-    pub loser_depth:  usize,
+    pub loser_depth: usize,
 }
 
 // ── CausalSettlementOracle ────────────────────────────────────────────────────
@@ -395,9 +393,9 @@ impl CausalSettlementOracle {
             let depth = self.ancestry_depth(a.id);
             return SettlementOutcome {
                 winner: a.id,
-                loser:  b.id,
+                loser: b.id,
                 winner_depth: depth,
-                loser_depth:  depth,
+                loser_depth: depth,
             };
         }
 
@@ -409,16 +407,16 @@ impl CausalSettlementOracle {
         if a_wins {
             SettlementOutcome {
                 winner: a.id,
-                loser:  b.id,
+                loser: b.id,
                 winner_depth: depth_a,
-                loser_depth:  depth_b,
+                loser_depth: depth_b,
             }
         } else {
             SettlementOutcome {
                 winner: b.id,
-                loser:  a.id,
+                loser: a.id,
                 winner_depth: depth_b,
-                loser_depth:  depth_a,
+                loser_depth: depth_a,
             }
         }
     }
@@ -446,12 +444,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.5),
-                entropy_rate:           Estimate::exact(0.3),
+                entropy_rate: Estimate::exact(0.3),
             })
             .payload(Bytes::new())
             .build()
@@ -459,7 +457,9 @@ mod tests {
     }
 
     // Convenience: AgentId-style shorthand for tests only.
-    fn aid(v: u128) -> CausalId { CausalId(v) }
+    fn aid(v: u128) -> CausalId {
+        CausalId(v)
+    }
 
     // ── CsoIndex: reputation thresholds ──────────────────────────────────────
 
@@ -500,7 +500,10 @@ mod tests {
             idx.update_rho(aid(10), 1.0);
         }
         let score = idx.reputation_score(&aid(10));
-        assert!(score > 0.8, "update_rho(1.0)×50 → {score:.4} should exceed 0.8");
+        assert!(
+            score > 0.8,
+            "update_rho(1.0)×50 → {score:.4} should exceed 0.8"
+        );
     }
 
     #[test]
@@ -510,7 +513,10 @@ mod tests {
             idx.update_rho(aid(11), 0.0);
         }
         let score = idx.reputation_score(&aid(11));
-        assert!(score < 0.2, "update_rho(0.0)×50 → {score:.4} should be below 0.2");
+        assert!(
+            score < 0.2,
+            "update_rho(0.0)×50 → {score:.4} should be below 0.2"
+        );
     }
 
     // ── CsoIndex: leaderboard ─────────────────────────────────────────────────
@@ -548,7 +554,10 @@ mod tests {
         // Agent 100 must outrank agent 300.
         let s100 = idx.reputation_score(&aid(100));
         let s300 = idx.reputation_score(&aid(300));
-        assert!(s100 > s300, "high-ρ agent ({s100:.4}) must beat zero-ρ agent ({s300:.4})");
+        assert!(
+            s100 > s300,
+            "high-ρ agent ({s100:.4}) must beat zero-ρ agent ({s300:.4})"
+        );
     }
 
     // ── CsoIndex: edge cases ──────────────────────────────────────────────────
@@ -593,7 +602,7 @@ mod tests {
     #[test]
     fn settle_deeper_ancestry_wins() {
         let dag = Arc::new(CausalDag::new());
-        let root    = minimal_record(1, &[]);
+        let root = minimal_record(1, &[]);
         let child_a = minimal_record(2, &[1]);
         dag.append(root).unwrap();
         dag.append(child_a.clone()).unwrap();
@@ -602,7 +611,7 @@ mod tests {
         let cso = CausalSettlementOracle::new(Arc::clone(&dag));
         let outcome = cso.settle(&child_a, &child_b);
         assert_eq!(outcome.winner, child_a.id);
-        assert_eq!(outcome.loser,  child_b.id);
+        assert_eq!(outcome.loser, child_b.id);
     }
 
     #[test]
@@ -610,7 +619,7 @@ mod tests {
         let dag = Arc::new(CausalDag::new());
         let cso = CausalSettlementOracle::new(Arc::clone(&dag));
 
-        let low_id  = minimal_record(10, &[]);
+        let low_id = minimal_record(10, &[]);
         let high_id = minimal_record(20, &[]);
 
         let outcome = cso.settle(&low_id, &high_id);
@@ -625,6 +634,6 @@ mod tests {
         let b = minimal_record(200, &[]);
         let outcome = cso.settle(&a, &b);
         assert_eq!(outcome.winner_depth, 0);
-        assert_eq!(outcome.loser_depth,  0);
+        assert_eq!(outcome.loser_depth, 0);
     }
 }

@@ -13,6 +13,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 use std::collections::VecDeque;
 
@@ -132,10 +160,10 @@ impl GammaCalculator {
         let curr = &self.window[n - 1];
 
         let delta_c = curr.c_mu - prev.c_mu;
-        let c_bar   = (curr.c_mu + prev.c_mu) / 2.0;
+        let c_bar = (curr.c_mu + prev.c_mu) / 2.0;
 
         let delta_lambda = curr.lambda - prev.lambda;
-        let lambda_bar   = (curr.lambda + prev.lambda) / 2.0;
+        let lambda_bar = (curr.lambda + prev.lambda) / 2.0;
 
         // Guard: C̄_μ ≈ 0 → undefined.
         if c_bar.abs() < 1e-15 {
@@ -147,7 +175,11 @@ impl GammaCalculator {
         // Guard: ΔΛ ≈ 0.
         if delta_lambda.abs() < 1e-30 {
             // Both stable → neutral.  One nonzero → unbounded (return None).
-            return if delta_c.abs() < 1e-15 { Some(1.0) } else { None };
+            return if delta_c.abs() < 1e-15 {
+                Some(1.0)
+            } else {
+                None
+            };
         }
 
         // Guard: Λ̄ ≈ 0 (should not occur for real Landauer costs, but guard anyway).
@@ -174,17 +206,21 @@ impl GammaCalculator {
             .iter()
             .zip(self.window.iter().skip(1))
             .map(|(prev, curr)| {
-                let delta_c      = curr.c_mu - prev.c_mu;
-                let c_bar        = (curr.c_mu + prev.c_mu) / 2.0;
+                let delta_c = curr.c_mu - prev.c_mu;
+                let c_bar = (curr.c_mu + prev.c_mu) / 2.0;
                 let delta_lambda = curr.lambda - prev.lambda;
-                let lambda_bar   = (curr.lambda + prev.lambda) / 2.0;
+                let lambda_bar = (curr.lambda + prev.lambda) / 2.0;
 
                 if c_bar.abs() < 1e-15 {
                     return None;
                 }
                 let rel_c = delta_c / c_bar;
                 if delta_lambda.abs() < 1e-30 {
-                    return if delta_c.abs() < 1e-15 { Some(1.0) } else { None };
+                    return if delta_c.abs() < 1e-15 {
+                        Some(1.0)
+                    } else {
+                        None
+                    };
                 }
                 if lambda_bar.abs() < 1e-30 {
                     return None;
@@ -265,7 +301,11 @@ fn slope_of(values: &[f64]) -> f64 {
         num += (x - x_bar) * (y - y_bar);
         den += (x - x_bar) * (x - x_bar);
     }
-    if den.abs() < 1e-30 { 0.0 } else { num / den }
+    if den.abs() < 1e-30 {
+        0.0
+    } else {
+        num / den
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -275,7 +315,11 @@ mod tests {
     use super::*;
 
     fn snap(c: f64, h: f64, l: f64) -> Snapshot {
-        Snapshot { c_mu: c, h_t: h, lambda: l }
+        Snapshot {
+            c_mu: c,
+            h_t: h,
+            lambda: l,
+        }
     }
 
     #[test]
@@ -283,7 +327,7 @@ mod tests {
         let mut calc = GammaCalculator::new(4);
         calc.push(snap(1.0, 0.5, 1e-18));
         calc.push(snap(1.0, 0.5, 1e-18)); // no change in either
-        // Both ΔC_μ=0 and ΔΛ=0 → neutral Γ_k = 1.0.
+                                          // Both ΔC_μ=0 and ΔΛ=0 → neutral Γ_k = 1.0.
         assert_eq!(calc.gamma_k(), Some(1.0));
     }
 
@@ -346,7 +390,11 @@ mod tests {
     fn gamma_series_length() {
         let mut calc = GammaCalculator::new(5);
         for i in 0..5 {
-            calc.push(snap(1.0 + i as f64 * 0.1, 0.5, 1e-18 * (1.0 + i as f64 * 0.01)));
+            calc.push(snap(
+                1.0 + i as f64 * 0.1,
+                0.5,
+                1e-18 * (1.0 + i as f64 * 0.01),
+            ));
         }
         assert_eq!(calc.gamma_series().len(), 4);
     }

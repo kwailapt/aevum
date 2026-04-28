@@ -179,8 +179,8 @@ impl Default for ParetoMctsConfig {
     fn default() -> Self {
         Self {
             exploration_constant: std::f64::consts::SQRT_2,
-            max_depth:            16,
-            pareto_front_target:  8,
+            max_depth: 16,
+            pareto_front_target: 8,
         }
     }
 }
@@ -192,8 +192,8 @@ impl Default for ParetoMctsConfig {
 /// Maintains a tree of [`MctsNode`]s and selects the next `TopologyAction` to
 /// evaluate based on UCB1 with Pareto dominance pruning.
 pub struct ParetoMcts {
-    cfg:         ParetoMctsConfig,
-    nodes:       Vec<MctsNode>,
+    cfg: ParetoMctsConfig,
+    nodes: Vec<MctsNode>,
     pareto_front: Vec<usize>, // indices into `nodes`
 }
 
@@ -202,15 +202,15 @@ impl ParetoMcts {
     #[must_use]
     pub fn new(cfg: ParetoMctsConfig) -> Self {
         let root = MctsNode {
-            action:      TopologyAction::Noop,
+            action: TopologyAction::Noop,
             visit_count: 0,
-            value_sum:   0.0,
-            cost_sum:    0.0,
-            parent_idx:  None,
+            value_sum: 0.0,
+            cost_sum: 0.0,
+            parent_idx: None,
         };
         Self {
             cfg,
-            nodes:        vec![root],
+            nodes: vec![root],
             pareto_front: vec![0],
         }
     }
@@ -247,7 +247,9 @@ impl ParetoMcts {
         let best_idx = self.pareto_front.iter().max_by(|&&a, &&b| {
             let score_a = self.ucb1_score(&self.nodes[a], ln_total);
             let score_b = self.ucb1_score(&self.nodes[b], ln_total);
-            score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+            score_a
+                .partial_cmp(&score_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         best_idx
@@ -270,8 +272,8 @@ impl ParetoMcts {
         let child_idx = self.find_or_add_child(0, action, bits_per_record);
         let node = &mut self.nodes[child_idx];
         node.visit_count += 1;
-        node.value_sum   += phi_delta;
-        node.cost_sum    += bits_per_record;
+        node.value_sum += phi_delta;
+        node.cost_sum += bits_per_record;
 
         // Recompute Pareto front including the updated node.
         self.update_pareto_front();
@@ -312,9 +314,9 @@ impl ParetoMcts {
         self.nodes.push(MctsNode {
             action,
             visit_count: 0,
-            value_sum:   0.0,
-            cost_sum:    initial_cost, // Will be divided on first visit
-            parent_idx:  Some(parent_idx),
+            value_sum: 0.0,
+            cost_sum: initial_cost, // Will be divided on first visit
+            parent_idx: Some(parent_idx),
         });
         new_idx
     }
@@ -356,8 +358,11 @@ mod tests {
     #[test]
     fn mean_value_zero_for_unvisited() {
         let node = MctsNode {
-            action: TopologyAction::Noop, visit_count: 0,
-            value_sum: 0.0, cost_sum: 0.0, parent_idx: None,
+            action: TopologyAction::Noop,
+            visit_count: 0,
+            value_sum: 0.0,
+            cost_sum: 0.0,
+            parent_idx: None,
         };
         assert_eq!(node.mean_value(), 0.0);
     }
@@ -365,8 +370,11 @@ mod tests {
     #[test]
     fn mean_cost_max_for_unvisited() {
         let node = MctsNode {
-            action: TopologyAction::Noop, visit_count: 0,
-            value_sum: 0.0, cost_sum: 0.0, parent_idx: None,
+            action: TopologyAction::Noop,
+            visit_count: 0,
+            value_sum: 0.0,
+            cost_sum: 0.0,
+            parent_idx: None,
         };
         assert_eq!(node.mean_cost(), f64::MAX);
     }
@@ -374,37 +382,68 @@ mod tests {
     #[test]
     fn mean_value_correct_after_visits() {
         let node = MctsNode {
-            action: TopologyAction::Noop, visit_count: 4,
-            value_sum: 8.0, cost_sum: 0.0, parent_idx: None,
+            action: TopologyAction::Noop,
+            visit_count: 4,
+            value_sum: 8.0,
+            cost_sum: 0.0,
+            parent_idx: None,
         };
         assert!((node.mean_value() - 2.0).abs() < 1e-10);
     }
 
     #[test]
     fn dominates_strictly_better_on_both_axes() {
-        let a = MctsNode { action: TopologyAction::Noop, visit_count: 1,
-            value_sum: 5.0, cost_sum: 1.0, parent_idx: None };
-        let b = MctsNode { action: TopologyAction::Noop, visit_count: 1,
-            value_sum: 3.0, cost_sum: 3.0, parent_idx: None };
+        let a = MctsNode {
+            action: TopologyAction::Noop,
+            visit_count: 1,
+            value_sum: 5.0,
+            cost_sum: 1.0,
+            parent_idx: None,
+        };
+        let b = MctsNode {
+            action: TopologyAction::Noop,
+            visit_count: 1,
+            value_sum: 3.0,
+            cost_sum: 3.0,
+            parent_idx: None,
+        };
         assert!(a.dominates(&b), "a should dominate b");
         assert!(!b.dominates(&a), "b should not dominate a");
     }
 
     #[test]
     fn dominates_equal_nodes_not_dominating() {
-        let a = MctsNode { action: TopologyAction::Noop, visit_count: 1,
-            value_sum: 3.0, cost_sum: 2.0, parent_idx: None };
+        let a = MctsNode {
+            action: TopologyAction::Noop,
+            visit_count: 1,
+            value_sum: 3.0,
+            cost_sum: 2.0,
+            parent_idx: None,
+        };
         let b = a.clone();
-        assert!(!a.dominates(&b), "equal nodes should not dominate each other");
+        assert!(
+            !a.dominates(&b),
+            "equal nodes should not dominate each other"
+        );
     }
 
     #[test]
     fn dominates_tradeoff_not_dominating() {
         // A is better on value but worse on cost — not dominated
-        let a = MctsNode { action: TopologyAction::Noop, visit_count: 1,
-            value_sum: 5.0, cost_sum: 4.0, parent_idx: None };
-        let b = MctsNode { action: TopologyAction::Noop, visit_count: 1,
-            value_sum: 2.0, cost_sum: 1.0, parent_idx: None };
+        let a = MctsNode {
+            action: TopologyAction::Noop,
+            visit_count: 1,
+            value_sum: 5.0,
+            cost_sum: 4.0,
+            parent_idx: None,
+        };
+        let b = MctsNode {
+            action: TopologyAction::Noop,
+            visit_count: 1,
+            value_sum: 2.0,
+            cost_sum: 1.0,
+            parent_idx: None,
+        };
         assert!(!a.dominates(&b));
         assert!(!b.dominates(&a));
     }
@@ -469,7 +508,11 @@ mod tests {
         // B: low value, low cost — neither dominates the other
         tree.record_rollout(TopologyAction::NarrowEpsilonWindow, 1.0, 100.0);
 
-        assert_eq!(tree.pareto_front_size(), 2, "both nodes should be on Pareto front");
+        assert_eq!(
+            tree.pareto_front_size(),
+            2,
+            "both nodes should be on Pareto front"
+        );
     }
 
     #[test]

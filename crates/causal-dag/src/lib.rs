@@ -34,6 +34,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 pub mod distance_tax;
 pub mod merge;
@@ -41,8 +69,8 @@ pub mod merge;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
+use dashmap::DashMap;
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -108,7 +136,7 @@ impl CausalDag {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            nodes:    DashMap::new(),
+            nodes: DashMap::new(),
             children: DashMap::new(),
         }
     }
@@ -120,7 +148,7 @@ impl CausalDag {
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            nodes:    DashMap::with_capacity(capacity),
+            nodes: DashMap::with_capacity(capacity),
             children: DashMap::with_capacity(capacity),
         }
     }
@@ -158,7 +186,7 @@ impl CausalDag {
         for pred_id in &record.predecessors {
             if !pred_id.is_genesis() && !self.nodes.contains_key(pred_id) {
                 return Err(DagError::MissingPredecessor {
-                    child:  id,
+                    child: id,
                     parent: *pred_id,
                 });
             }
@@ -251,8 +279,8 @@ impl CausalDag {
     #[must_use]
     pub fn ancestry(&self, id: &CausalId, max_depth: usize) -> Vec<CausalId> {
         let mut visited: HashSet<CausalId> = HashSet::new();
-        let mut result:  Vec<CausalId>     = Vec::new();
-        let mut queue:   std::collections::VecDeque<(CausalId, usize)> =
+        let mut result: Vec<CausalId> = Vec::new();
+        let mut queue: std::collections::VecDeque<(CausalId, usize)> =
             std::collections::VecDeque::new();
 
         if let Some(record) = self.get(id) {
@@ -311,9 +339,7 @@ impl Default for CausalDag {
 mod tests {
     use super::*;
     use bytes::Bytes;
-    use pacr_types::{
-        CognitiveSplit, Estimate, PacrBuilder, ResourceTriple,
-    };
+    use pacr_types::{CognitiveSplit, Estimate, PacrBuilder, ResourceTriple};
 
     /// Build a minimal valid [`PacrRecord`] for testing.
     pub(super) fn make_record(id: u128, preds: &[u128]) -> PacrRecord {
@@ -324,12 +350,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-19),
-                time:   Estimate::exact(1e-9),
-                space:  Estimate::exact(128.0),
+                time: Estimate::exact(1e-9),
+                space: Estimate::exact(128.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(1.0),
-                entropy_rate:           Estimate::exact(0.5),
+                entropy_rate: Estimate::exact(0.5),
             })
             .payload(Bytes::new())
             .build()
@@ -494,7 +520,7 @@ mod tests {
         // Once a record is inserted, a second get must return the same id.
         let dag = CausalDag::new();
         dag.append(make_record(42, &[0])).unwrap();
-        let first  = dag.get(&CausalId(42)).unwrap();
+        let first = dag.get(&CausalId(42)).unwrap();
         let second = dag.get(&CausalId(42)).unwrap();
         // Arc::ptr_eq is sufficient: same backing allocation = same record.
         assert!(Arc::ptr_eq(&first, &second));

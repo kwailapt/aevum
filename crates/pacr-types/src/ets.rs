@@ -103,9 +103,7 @@ pub enum PhysicsViolation {
     NegativeSpace,
 
     /// Margolus–Levitin theorem violated: T < π·ℏ / (2·E).
-    #[error(
-        "Margolus–Levitin violated: T={actual_s:.3e} s < T_min={minimum_s:.3e} s"
-    )]
+    #[error("Margolus–Levitin violated: T={actual_s:.3e} s < T_min={minimum_s:.3e} s")]
     MargolusLevitinViolated {
         /// Measured execution time (seconds).
         actual_s: f64,
@@ -124,8 +122,8 @@ mod tests {
     fn valid_triple() -> ResourceTriple {
         ResourceTriple {
             energy: Estimate::exact(1e-19),
-            time:   Estimate::exact(1e-9),
-            space:  Estimate::exact(128.0),
+            time: Estimate::exact(1e-9),
+            space: Estimate::exact(128.0),
         }
     }
 
@@ -137,9 +135,15 @@ mod tests {
     #[test]
     fn negative_energy_is_flagged() {
         let mut t = valid_triple();
-        t.energy = Estimate { point: -1.0, lower: -2.0, upper: 0.0 };
+        t.energy = Estimate {
+            point: -1.0,
+            lower: -2.0,
+            upper: 0.0,
+        };
         let v = t.validate_physics();
-        assert!(v.iter().any(|e| matches!(e, PhysicsViolation::NegativeEnergy)));
+        assert!(v
+            .iter()
+            .any(|e| matches!(e, PhysicsViolation::NegativeEnergy)));
     }
 
     #[test]
@@ -147,23 +151,31 @@ mod tests {
         let mut t = valid_triple();
         t.time = Estimate::exact(0.0);
         let v = t.validate_physics();
-        assert!(v.iter().any(|e| matches!(e, PhysicsViolation::NonPositiveTime)));
+        assert!(v
+            .iter()
+            .any(|e| matches!(e, PhysicsViolation::NonPositiveTime)));
     }
 
     #[test]
     fn negative_space_is_flagged() {
         let mut t = valid_triple();
-        t.space = Estimate { point: -1.0, lower: -2.0, upper: 0.0 };
+        t.space = Estimate {
+            point: -1.0,
+            lower: -2.0,
+            upper: 0.0,
+        };
         let v = t.validate_physics();
-        assert!(v.iter().any(|e| matches!(e, PhysicsViolation::NegativeSpace)));
+        assert!(v
+            .iter()
+            .any(|e| matches!(e, PhysicsViolation::NegativeSpace)));
     }
 
     #[test]
     fn thermodynamic_waste_propagates_uncertainty() {
         let triple = ResourceTriple {
             energy: Estimate::new(1e-19, 0.8e-19, 1.2e-19).unwrap(),
-            time:   Estimate::exact(1e-9),
-            space:  Estimate::exact(0.0),
+            time: Estimate::exact(1e-9),
+            space: Estimate::exact(0.0),
         };
         let lambda = Estimate::new(1e-20, 0.5e-20, 2.0e-20).unwrap();
         let waste = triple.thermodynamic_waste(&lambda);

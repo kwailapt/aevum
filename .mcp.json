@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aevum": {
+      "command": "/Users/tsoikwailap/aevum_workspace/.claude/worktrees/pensive-williams-d2b173/target/release/aevum-mcp-server",
+      "args": ["--transport", "stdio", "--ledger", "/Users/tsoikwailap/.aevum/mcp.ledger"]
+    }
+  }
+}

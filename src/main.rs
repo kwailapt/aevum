@@ -12,10 +12,10 @@ use std::path::PathBuf;
 use serde::Deserialize;
 
 use aevum_core::runtime::{
-    RuntimeConfig, export_ledger, merge_ledgers, read_status, start, verify_ledger,
+    export_ledger, merge_ledgers, read_status, start, verify_ledger, RuntimeConfig,
 };
 #[cfg(feature = "light_node")]
-use aevum_core::{TailscaleForwarder, runtime::start_light};
+use aevum_core::{runtime::start_light, TailscaleForwarder};
 
 // ── Node config (light-node.toml) ─────────────────────────────────────────────
 
@@ -36,11 +36,11 @@ struct NodeConfig {
     /// TCP port for the CSO reputation HTTP API.  Maps to `RuntimeConfig::cso_http_port`.
     cso_http_port: Option<u16>,
     /// tokio worker threads.  Maps to `RuntimeConfig::worker_threads`.
-    max_threads:   Option<usize>,
+    max_threads: Option<usize>,
     /// Ledger directory path.  Maps to `RuntimeConfig::ledger_dir`.
-    ledger_path:   Option<String>,
+    ledger_path: Option<String>,
     /// Forwarder config (light_node only).
-    forwarder:     Option<ForwarderConfig>,
+    forwarder: Option<ForwarderConfig>,
     // `feature` and other deployment-only keys are silently ignored.
 }
 
@@ -143,11 +143,11 @@ async fn main() {
 
     let subcmd = args.remove(0);
     match subcmd.as_str() {
-        "run"    => cmd_run(args).await,
+        "run" => cmd_run(args).await,
         "status" => cmd_status(args).await,
         "verify" => cmd_verify(args).await,
         "export" => cmd_export(args).await,
-        "merge"  => cmd_merge(args).await,
+        "merge" => cmd_merge(args).await,
         "help" | "--help" | "-h" => print_usage(),
         other => {
             eprintln!("aevum: unknown command '{other}'\n");
@@ -185,16 +185,12 @@ async fn cmd_run(mut args: Vec<String>) {
     // 4. light_node: Dumb Pipe path — zero DashMap, zero persistence.
     #[cfg(feature = "light_node")]
     {
-        let fwd_cfg = node_cfg
-            .and_then(|c| c.forwarder)
-            .unwrap_or_else(|| {
-                eprintln!("aevum: light_node requires [forwarder] section in --config");
-                std::process::exit(1);
-            });
-        let forwarder = TailscaleForwarder::new(
-            &fwd_cfg.genesis_tailscale_ip,
-            fwd_cfg.genesis_port,
-        );
+        let fwd_cfg = node_cfg.and_then(|c| c.forwarder).unwrap_or_else(|| {
+            eprintln!("aevum: light_node requires [forwarder] section in --config");
+            std::process::exit(1);
+        });
+        let forwarder =
+            TailscaleForwarder::new(&fwd_cfg.genesis_tailscale_ip, fwd_cfg.genesis_port);
         eprintln!(
             "aevum: light_node dumb-pipe starting (→ {}:{})",
             fwd_cfg.genesis_tailscale_ip, fwd_cfg.genesis_port,

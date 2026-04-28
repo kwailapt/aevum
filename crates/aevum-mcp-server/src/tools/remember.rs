@@ -35,11 +35,9 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use ordered_float::OrderedFloat;
-use pacr_types::{
-    CognitiveSplit, Estimate, PacrBuilder, PredecessorSet, ResourceTriple,
-};
-use smallvec::smallvec;
+use pacr_types::{CognitiveSplit, Estimate, PacrBuilder, PredecessorSet, ResourceTriple};
 use serde_json::Value;
+use smallvec::smallvec;
 
 use crate::router::McpResponse;
 use crate::state::{generate_causal_id, AppState};
@@ -91,7 +89,10 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
     // ── 3. quick_screen (Pillar III: observer must not waste Λ on pure noise) ──
     let byte_stream: Vec<u8> = freqs.iter().flat_map(|v| v.to_le_bytes()).collect();
     match quick_screen(&byte_stream, QUICK_SCREEN_THRESHOLD) {
-        epsilon_engine::quick_screen::ScreenResult::Skip { reason, entropy_bits } => {
+        epsilon_engine::quick_screen::ScreenResult::Skip {
+            reason,
+            entropy_bits,
+        } => {
             return McpResponse::ok(
                 id,
                 serde_json::json!({
@@ -157,12 +158,12 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
     let landauer_cost = Estimate::exact(lambda_joules);
     let resources = ResourceTriple {
         energy: Estimate::exact(lambda_joules * ENERGY_OVERHEAD_FACTOR),
-        time:   Estimate::exact(MIN_TIME_ESTIMATE_SECS),
-        space:  Estimate::exact(text.len() as f64),
+        time: Estimate::exact(MIN_TIME_ESTIMATE_SECS),
+        space: Estimate::exact(text.len() as f64),
     };
     let cognitive_split = CognitiveSplit {
         statistical_complexity: Estimate::exact(s_t),
-        entropy_rate:           Estimate::exact(h_t),
+        entropy_rate: Estimate::exact(h_t),
     };
     let payload = Bytes::copy_from_slice(text.as_bytes());
 
@@ -270,7 +271,10 @@ mod tests {
         let r = resp.result.unwrap();
         // Either recorded=true or recorded=false(noise) — both are valid outcomes.
         // For this length of text, noise is unlikely; assert recorded=true.
-        assert_eq!(r["recorded"], true, "expected recorded=true for structured text");
+        assert_eq!(
+            r["recorded"], true,
+            "expected recorded=true for structured text"
+        );
         assert!(r["causal_id"].is_string());
         assert!(r["s_t"].is_number());
         assert!(r["h_t"].is_number());
@@ -293,7 +297,11 @@ mod tests {
         let r = resp.result.unwrap();
         if r["recorded"] == true {
             // last_id must have advanced beyond GENESIS
-            assert_ne!(state.last_id(), CausalId::GENESIS, "last_id should advance after remember");
+            assert_ne!(
+                state.last_id(),
+                CausalId::GENESIS,
+                "last_id should advance after remember"
+            );
         }
     }
 
@@ -324,8 +332,18 @@ mod tests {
         let t1 = "First causal record in the chain — must have GENESIS predecessor";
         let t2 = "Second causal record in the chain — must have first record as predecessor";
 
-        let r1 = handle(Value::Number(1.into()), serde_json::json!({"text": t1}), Arc::clone(&state)).await;
-        let r2 = handle(Value::Number(2.into()), serde_json::json!({"text": t2}), Arc::clone(&state)).await;
+        let r1 = handle(
+            Value::Number(1.into()),
+            serde_json::json!({"text": t1}),
+            Arc::clone(&state),
+        )
+        .await;
+        let r2 = handle(
+            Value::Number(2.into()),
+            serde_json::json!({"text": t2}),
+            Arc::clone(&state),
+        )
+        .await;
 
         let v1 = r1.result.unwrap();
         let v2 = r2.result.unwrap();
@@ -341,7 +359,12 @@ mod tests {
         let dir = tempdir().unwrap();
         let state = AppState::new(dir.path().join("l.bin")).await.unwrap();
         let text = "thermodynamic cost must always be positive — Pillar II invariant check";
-        let resp = handle(Value::Number(1.into()), serde_json::json!({"text": text}), state).await;
+        let resp = handle(
+            Value::Number(1.into()),
+            serde_json::json!({"text": text}),
+            state,
+        )
+        .await;
         let r = resp.result.unwrap();
         if r["recorded"] == true {
             let lambda: f64 = r["lambda_joules"].as_f64().unwrap();
@@ -357,11 +380,24 @@ mod tests {
         let state = AppState::new(dir.path().join("l.bin")).await.unwrap();
         // This specific text has structured content — result must be deterministic.
         let text = "structured natural language with causal epistemic signal content here";
-        let r1 = handle(Value::Number(1.into()), serde_json::json!({"text": text}), Arc::clone(&state)).await;
-        let r2 = handle(Value::Number(2.into()), serde_json::json!({"text": text}), Arc::clone(&state)).await;
+        let r1 = handle(
+            Value::Number(1.into()),
+            serde_json::json!({"text": text}),
+            Arc::clone(&state),
+        )
+        .await;
+        let r2 = handle(
+            Value::Number(2.into()),
+            serde_json::json!({"text": text}),
+            Arc::clone(&state),
+        )
+        .await;
         // Same text → same S_T → same noise/proceed decision.
         let v1 = r1.result.unwrap();
         let v2 = r2.result.unwrap();
-        assert_eq!(v1["recorded"], v2["recorded"], "same input must produce same noise decision");
+        assert_eq!(
+            v1["recorded"], v2["recorded"],
+            "same input must produce same noise decision"
+        );
     }
 }

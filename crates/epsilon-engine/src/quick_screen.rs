@@ -31,6 +31,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 // ── ScreenResult ──────────────────────────────────────────────────────────────
 
@@ -88,7 +116,10 @@ impl ScreenResult {
 pub fn quick_screen(data: &[u8], threshold: f64) -> ScreenResult {
     let entropy_bits = byte_entropy(data);
     if entropy_bits <= threshold {
-        ScreenResult::Skip { reason: "near-deterministic", entropy_bits }
+        ScreenResult::Skip {
+            reason: "near-deterministic",
+            entropy_bits,
+        }
     } else {
         ScreenResult::Proceed { entropy_bits }
     }
@@ -175,7 +206,10 @@ mod tests {
 
     #[test]
     fn screen_result_is_skip_helper() {
-        let skip = ScreenResult::Skip { reason: "near-deterministic", entropy_bits: 0.1 };
+        let skip = ScreenResult::Skip {
+            reason: "near-deterministic",
+            entropy_bits: 0.1,
+        };
         let proceed = ScreenResult::Proceed { entropy_bits: 5.0 };
         assert!(skip.is_skip());
         assert!(!proceed.is_skip());

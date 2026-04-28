@@ -32,6 +32,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 use pacr_types::{Estimate, LandauerCost, K_B};
 use std::time::Instant;
@@ -52,16 +80,13 @@ pub const TEMPERATURE_UPPER_K: f64 = 310.0;
 
 /// Landauer floor per bit at nominal temperature (joules).
 /// `K_B × 300 K × ln(2) ≈ 2.870 979 × 10⁻²¹ J`
-pub const LANDAUER_PER_BIT_NOMINAL_J: f64 =
-    K_B * TEMPERATURE_NOMINAL_K * std::f64::consts::LN_2;
+pub const LANDAUER_PER_BIT_NOMINAL_J: f64 = K_B * TEMPERATURE_NOMINAL_K * std::f64::consts::LN_2;
 
 /// Landauer floor per bit at lower temperature bound (joules).
-const LANDAUER_PER_BIT_LOWER_J: f64 =
-    K_B * TEMPERATURE_LOWER_K * std::f64::consts::LN_2;
+const LANDAUER_PER_BIT_LOWER_J: f64 = K_B * TEMPERATURE_LOWER_K * std::f64::consts::LN_2;
 
 /// Landauer floor per bit at upper temperature bound (joules).
-const LANDAUER_PER_BIT_UPPER_J: f64 =
-    K_B * TEMPERATURE_UPPER_K * std::f64::consts::LN_2;
+const LANDAUER_PER_BIT_UPPER_J: f64 = K_B * TEMPERATURE_UPPER_K * std::f64::consts::LN_2;
 
 // ── Core computation ──────────────────────────────────────────────────────────
 
@@ -83,7 +108,6 @@ const LANDAUER_PER_BIT_UPPER_J: f64 =
 ///
 /// O(1).
 #[must_use]
-#[allow(clippy::cast_precision_loss)] // u64 → f64: realistic bit counts fit mantissa
 pub fn compute(bits_erased: u64) -> LandauerCost {
     let n = bits_erased.max(1) as f64; // floor at 1; cannot have zero Landauer cost
     Estimate {
@@ -102,7 +126,6 @@ pub fn compute(bits_erased: u64) -> LandauerCost {
 ///
 /// `(4 × bytes).max(1)` — conservative point estimate.
 #[must_use]
-#[allow(clippy::cast_possible_truncation)] // intentional saturation to u64::MAX
 pub fn bits_from_bytes(bytes: u64) -> u64 {
     bytes.saturating_mul(4).max(1)
 }
@@ -131,7 +154,9 @@ impl LandauerTimer {
     /// Starts the timer immediately before the measured computation.
     #[must_use]
     pub fn start() -> Self {
-        Self { _start: Instant::now() }
+        Self {
+            _start: Instant::now(),
+        }
     }
 
     /// Stops the timer and returns the [`LandauerCost`] for `bits_erased`.
@@ -225,7 +250,7 @@ mod tests {
 
     #[test]
     fn compute_scales_linearly_with_bits() {
-        let one  = compute(1).point;
+        let one = compute(1).point;
         let mega = compute(1_000_000).point;
         let ratio = mega / one;
         assert!((ratio - 1_000_000.0).abs() < 1.0, "ratio={ratio}");
@@ -275,7 +300,7 @@ mod tests {
 
     #[test]
     fn bits_from_bytes_multiplies_by_four() {
-        assert_eq!(bits_from_bytes(1),   4);
+        assert_eq!(bits_from_bytes(1), 4);
         assert_eq!(bits_from_bytes(100), 400);
     }
 

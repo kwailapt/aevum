@@ -164,9 +164,7 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
             // Decode payload as UTF-8; use hex fallback for binary payloads.
             let payload_str = std::str::from_utf8(&record.payload)
                 .map(|s| s.to_owned())
-                .unwrap_or_else(|_| {
-                    format!("<binary {} bytes>", record.payload.len())
-                });
+                .unwrap_or_else(|_| format!("<binary {} bytes>", record.payload.len()));
 
             Some((score, cid, record_s_t, record_h_t, payload_str))
         })
@@ -206,7 +204,9 @@ pub async fn handle(id: Value, args: Value, state: Arc<AppState>) -> McpResponse
                             let h_t = rec.cognitive_split.entropy_rate.point;
                             let payload_str = std::str::from_utf8(&rec.payload)
                                 .map(|s| s.to_owned())
-                                .unwrap_or_else(|_| format!("<binary {} bytes>", rec.payload.len()));
+                                .unwrap_or_else(|_| {
+                                    format!("<binary {} bytes>", rec.payload.len())
+                                });
                             chain.push(serde_json::json!({
                                 "causal_id": format!("{:032x}", cid.0),
                                 "depth":     depth + 1,
@@ -280,11 +280,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
-    async fn remember(
-        state: Arc<AppState>,
-        text: &str,
-        req_id: i64,
-    ) -> serde_json::Value {
+    async fn remember(state: Arc<AppState>, text: &str, req_id: i64) -> serde_json::Value {
         crate::tools::remember::handle(
             Value::Number(req_id.into()),
             serde_json::json!({"text": text}),
@@ -451,9 +447,18 @@ mod tests {
         .await;
         let r = resp.result.unwrap();
         assert!(r.get("context").is_some(), "response must have 'context'");
-        assert!(r.get("relevant_records").is_some(), "response must have 'relevant_records'");
-        assert!(r.get("confidence").is_some(), "response must have 'confidence'");
-        assert!(r.get("query_s_t").is_some(), "response must have 'query_s_t'");
+        assert!(
+            r.get("relevant_records").is_some(),
+            "response must have 'relevant_records'"
+        );
+        assert!(
+            r.get("confidence").is_some(),
+            "response must have 'confidence'"
+        );
+        assert!(
+            r.get("query_s_t").is_some(),
+            "response must have 'query_s_t'"
+        );
     }
 
     #[tokio::test]
@@ -467,7 +472,10 @@ mod tests {
             state,
         )
         .await;
-        assert!(resp.error.is_none(), "no error expected with default tolerance");
+        assert!(
+            resp.error.is_none(),
+            "no error expected with default tolerance"
+        );
     }
 
     #[tokio::test]
@@ -520,7 +528,10 @@ mod tests {
         let relevant = r["relevant_records"].as_array().unwrap();
         // At least one record should have a causal_chain field (the one with a predecessor).
         let has_chain = relevant.iter().any(|rec| rec.get("causal_chain").is_some());
-        assert!(has_chain, "traverse_depth=1 on a chained record must produce causal_chain");
+        assert!(
+            has_chain,
+            "traverse_depth=1 on a chained record must produce causal_chain"
+        );
     }
 
     #[tokio::test]
@@ -546,11 +557,17 @@ mod tests {
         for rec in r["relevant_records"].as_array().unwrap() {
             if let Some(chain) = rec.get("causal_chain").and_then(|c| c.as_array()) {
                 for entry in chain {
-                    assert!(entry.get("causal_id").is_some(), "chain entry must have causal_id");
-                    assert!(entry.get("depth").is_some(),    "chain entry must have depth");
-                    assert!(entry.get("s_t").is_some(),      "chain entry must have s_t");
-                    assert!(entry.get("h_t").is_some(),      "chain entry must have h_t");
-                    assert!(entry.get("payload").is_some(),  "chain entry must have payload");
+                    assert!(
+                        entry.get("causal_id").is_some(),
+                        "chain entry must have causal_id"
+                    );
+                    assert!(entry.get("depth").is_some(), "chain entry must have depth");
+                    assert!(entry.get("s_t").is_some(), "chain entry must have s_t");
+                    assert!(entry.get("h_t").is_some(), "chain entry must have h_t");
+                    assert!(
+                        entry.get("payload").is_some(),
+                        "chain entry must have payload"
+                    );
                     let depth = entry["depth"].as_u64().unwrap();
                     assert!(depth >= 1, "depth must be ≥1");
                 }

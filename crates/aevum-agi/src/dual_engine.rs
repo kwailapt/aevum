@@ -81,8 +81,8 @@ pub struct DualEngineConfig {
 impl Default for DualEngineConfig {
     fn default() -> Self {
         Self {
-            entropy_floor:       1e-6,
-            s_t_ceiling:         100.0,
+            entropy_floor: 1e-6,
+            s_t_ceiling: 100.0,
             delta_phi_threshold: 0.01,
         }
     }
@@ -179,8 +179,8 @@ pub struct DualEngineStatus {
 /// # }
 /// ```
 pub struct DualEngine {
-    cfg:        DualEngineConfig,
-    prev_phi:   Option<f64>,
+    cfg: DualEngineConfig,
+    prev_phi: Option<f64>,
     step_count: u64,
 }
 
@@ -190,7 +190,7 @@ impl DualEngine {
     pub fn new(cfg: DualEngineConfig) -> Self {
         Self {
             cfg,
-            prev_phi:   None,
+            prev_phi: None,
             step_count: 0,
         }
     }
@@ -214,7 +214,7 @@ impl DualEngine {
 
         let status = DualEngineStatus {
             phi,
-            prev_phi:   self.prev_phi,
+            prev_phi: self.prev_phi,
             adjustment,
             step_count: self.step_count,
         };
@@ -225,7 +225,7 @@ impl DualEngine {
 
     /// Reset the engine's Φ history without changing configuration.
     pub fn reset(&mut self) {
-        self.prev_phi   = None;
+        self.prev_phi = None;
         self.step_count = 0;
     }
 
@@ -270,9 +270,9 @@ mod tests {
     fn snap(s_t: f64, h_t: f64) -> DualEngineSnapshot {
         DualEngineSnapshot {
             statistical_complexity: s_t,
-            entropy_rate:           h_t,
-            bits_erased:            0,
-            record_count:           0,
+            entropy_rate: h_t,
+            bits_erased: 0,
+            record_count: 0,
         }
     }
 
@@ -288,7 +288,11 @@ mod tests {
 
     #[test]
     fn phi_uses_ceiling_when_h_t_at_floor() {
-        let cfg = DualEngineConfig { entropy_floor: 1e-6, s_t_ceiling: 10.0, ..Default::default() };
+        let cfg = DualEngineConfig {
+            entropy_floor: 1e-6,
+            s_t_ceiling: 10.0,
+            ..Default::default()
+        };
         let engine = DualEngine::new(cfg);
         // H_T = 0 ≤ floor → h_eff = 10.0, Φ = 3.0 × (3.0 / 10.0) = 0.9
         let phi = engine.compute_phi(3.0, 0.0);
@@ -341,10 +345,13 @@ mod tests {
 
     #[test]
     fn delta_below_threshold_holds_boundary() {
-        let cfg = DualEngineConfig { delta_phi_threshold: 0.5, ..Default::default() };
+        let cfg = DualEngineConfig {
+            delta_phi_threshold: 0.5,
+            ..Default::default()
+        };
         let mut engine = DualEngine::new(cfg);
         let _ = engine.step(snap(2.0, 1.0)); // Φ = 4.0
-        // Phi increases by ~0.1 — below threshold of 0.5
+                                             // Phi increases by ~0.1 — below threshold of 0.5
         let status = engine.step(snap(2.025, 1.0)); // Φ ≈ 4.1
         assert_eq!(status.adjustment, BoundaryAdjustment::HoldBoundary);
     }
@@ -385,8 +392,8 @@ mod tests {
     #[test]
     fn status_serde_roundtrip() {
         let status = DualEngineStatus {
-            phi:        3.14,
-            prev_phi:   Some(2.71),
+            phi: 3.14,
+            prev_phi: Some(2.71),
             adjustment: BoundaryAdjustment::ExpandBoundary,
             step_count: 42,
         };

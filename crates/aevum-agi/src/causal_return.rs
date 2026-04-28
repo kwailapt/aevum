@@ -15,8 +15,8 @@
 
 #![forbid(unsafe_code)]
 
-use std::sync::Arc;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use aevum_core::CsoIndex;
 use dashmap::DashMap;
@@ -35,7 +35,10 @@ struct ReturnEma {
 
 impl ReturnEma {
     fn new() -> Self {
-        Self { value: 0.0, count: 0 }
+        Self {
+            value: 0.0,
+            count: 0,
+        }
     }
 
     /// Update the EMA with a new ρ observation. α = 0.1.
@@ -61,7 +64,9 @@ impl CausalReturnTracker {
     /// Create a new tracker.
     #[must_use]
     pub fn new() -> Self {
-        Self { ema_map: DashMap::new() }
+        Self {
+            ema_map: DashMap::new(),
+        }
     }
 
     /// Record one ρ observation for the (source, target) pair.
@@ -72,11 +77,11 @@ impl CausalReturnTracker {
     /// (undefined return for zero-cost transmission).
     pub fn record_return(
         &self,
-        source:            CausalId,
-        target:            CausalId,
-        lambda_source:     f64,
+        source: CausalId,
+        target: CausalId,
+        lambda_source: f64,
         phi_target_before: f64,
-        phi_target_after:  f64,
+        phi_target_after: f64,
     ) {
         if lambda_source <= 0.0 {
             return;
@@ -122,11 +127,7 @@ impl CausalReturnTracker {
     /// propagate observed causal efficiency into the global reputation index.
     pub fn flush_to_cso(&self, cso: &Arc<CsoIndex>) {
         // Collect unique source IDs without holding the DashMap shard lock.
-        let sources: HashSet<CausalId> = self
-            .ema_map
-            .iter()
-            .map(|e| e.key().0)
-            .collect();
+        let sources: HashSet<CausalId> = self.ema_map.iter().map(|e| e.key().0).collect();
 
         for source in sources {
             let rate = self.agent_return_rate(source);
@@ -164,7 +165,10 @@ mod tests {
             tracker.record_return(source, target, 1.0, 0.0, 0.0); // rho = 0.0
         }
         let rate = tracker.agent_return_rate(source);
-        assert!(rate < 0.01, "after 100 zero observations, rate={rate} should be < 0.01");
+        assert!(
+            rate < 0.01,
+            "after 100 zero observations, rate={rate} should be < 0.01"
+        );
     }
 
     #[test]
@@ -176,14 +180,21 @@ mod tests {
             tracker.record_return(source, target, 1.0, 0.0, 2.0); // rho = 2.0
         }
         let rate = tracker.agent_return_rate(source);
-        assert!(rate > 1.5, "after 20 rho=2.0 observations, rate={rate} should be > 1.5");
+        assert!(
+            rate > 1.5,
+            "after 20 rho=2.0 observations, rate={rate} should be > 1.5"
+        );
     }
 
     #[test]
     fn zero_lambda_is_ignored() {
         let tracker = CausalReturnTracker::new();
         tracker.record_return(CausalId(1), CausalId(2), 0.0, 0.0, 100.0);
-        assert_eq!(tracker.pair_count(), 0, "zero lambda should produce no entry");
+        assert_eq!(
+            tracker.pair_count(),
+            0,
+            "zero lambda should produce no entry"
+        );
     }
 
     #[test]
@@ -200,6 +211,9 @@ mod tests {
         }
         let rate = tracker.agent_return_rate(source);
         // Average of ~4.0 and ~0.0 = ~2.0
-        assert!(rate > 1.0 && rate < 3.5, "average rate={rate} should be ~2.0");
+        assert!(
+            rate > 1.0 && rate < 3.5,
+            "average rate={rate} should be ~2.0"
+        );
     }
 }

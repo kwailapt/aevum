@@ -20,6 +20,34 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
 use std::collections::HashMap;
 
@@ -42,7 +70,11 @@ pub struct CausalState {
 
 impl CausalState {
     fn new(id: usize, alphabet_size: usize) -> Self {
-        Self { id, pooled: vec![0u32; alphabet_size], histories: Vec::new() }
+        Self {
+            id,
+            pooled: vec![0u32; alphabet_size],
+            histories: Vec::new(),
+        }
     }
 
     fn total(&self) -> u32 {
@@ -158,12 +190,7 @@ pub fn build_suffix_stats(
 /// # Returns
 ///
 /// [`CssrResult`] with the inferred causal states and history → state map.
-pub fn run_cssr(
-    symbols: &[u8],
-    alphabet_size: usize,
-    max_depth: usize,
-    alpha: f64,
-) -> CssrResult {
+pub fn run_cssr(symbols: &[u8], alphabet_size: usize, max_depth: usize, alpha: f64) -> CssrResult {
     let stats = build_suffix_stats(symbols, alphabet_size, max_depth);
     let mut states: Vec<CausalState> = Vec::new();
     let mut assignment: HashMap<Vec<u8>, usize> = HashMap::new();
@@ -171,11 +198,8 @@ pub fn run_cssr(
     // Process histories depth-by-depth (L=1 first).
     for depth in 1..=max_depth {
         // Collect all observed histories of this depth.
-        let mut histories: Vec<Vec<u8>> = stats
-            .keys()
-            .filter(|h| h.len() == depth)
-            .cloned()
-            .collect();
+        let mut histories: Vec<Vec<u8>> =
+            stats.keys().filter(|h| h.len() == depth).cloned().collect();
         histories.sort(); // deterministic order
 
         for history in histories {
@@ -183,8 +207,16 @@ pub fn run_cssr(
             let hist_total: u32 = hist_counts.iter().sum();
 
             // Parent history: drop the oldest (first) symbol.
-            let parent_key: Vec<u8> = if depth > 1 { history[1..].to_vec() } else { vec![] };
-            let parent_state = if depth > 1 { assignment.get(&parent_key).copied() } else { None };
+            let parent_key: Vec<u8> = if depth > 1 {
+                history[1..].to_vec()
+            } else {
+                vec![]
+            };
+            let parent_state = if depth > 1 {
+                assignment.get(&parent_key).copied()
+            } else {
+                None
+            };
 
             // --- Assign this history to a causal state ---
             let target_state: Option<usize> = if let Some(ps_id) = parent_state {
@@ -241,18 +273,19 @@ pub fn run_cssr(
         states.push(s);
     }
 
-    CssrResult { states, assignment, alphabet_size, max_depth }
+    CssrResult {
+        states,
+        assignment,
+        alphabet_size,
+        max_depth,
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Find the first existing state whose pooled distribution is homogeneous with
 /// `hist_counts` at significance `alpha`.  Returns `None` if no match found.
-fn find_compatible(
-    states: &[CausalState],
-    hist_counts: &[u32],
-    alpha: f64,
-) -> Option<usize> {
+fn find_compatible(states: &[CausalState], hist_counts: &[u32], alpha: f64) -> Option<usize> {
     states
         .iter()
         .filter(|s| !s.is_empty())
@@ -262,11 +295,7 @@ fn find_compatible(
 
 /// Merge pass: repeatedly scan for pairs of states whose pooled distributions
 /// are homogeneous; merge the larger-index into the smaller-index.
-fn merge_pass(
-    states: &mut Vec<CausalState>,
-    assignment: &mut HashMap<Vec<u8>, usize>,
-    alpha: f64,
-) {
+fn merge_pass(states: &mut Vec<CausalState>, assignment: &mut HashMap<Vec<u8>, usize>, alpha: f64) {
     let mut changed = true;
     while changed {
         changed = false;

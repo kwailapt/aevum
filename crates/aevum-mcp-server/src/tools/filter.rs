@@ -75,7 +75,10 @@ pub async fn handle(id: Value, args: Value, _state: Arc<AppState>) -> McpRespons
 
     let byte_stream: Vec<u8> = global_freqs.iter().flat_map(|v| v.to_le_bytes()).collect();
     match quick_screen(&byte_stream, QUICK_SCREEN_THRESHOLD) {
-        ScreenResult::Skip { reason, entropy_bits } => {
+        ScreenResult::Skip {
+            reason,
+            entropy_bits,
+        } => {
             return McpResponse::ok(
                 id,
                 serde_json::json!({
@@ -96,8 +99,8 @@ pub async fn handle(id: Value, args: Value, _state: Arc<AppState>) -> McpRespons
     let total_chars = chars.len();
 
     let cfg = Config {
-        max_depth:   5,
-        alpha:       0.001,
+        max_depth: 5,
+        alpha: 0.001,
         bootstrap_b: 0, // fast path (Pillar I)
         alphabet_size: ALPHABET_SIZE,
     };
@@ -180,7 +183,12 @@ mod tests {
 
     #[tokio::test]
     async fn filter_missing_content_returns_error() {
-        let resp = handle(Value::Number(1.into()), serde_json::json!({}), state().await).await;
+        let resp = handle(
+            Value::Number(1.into()),
+            serde_json::json!({}),
+            state().await,
+        )
+        .await;
         assert!(resp.error.is_some());
         assert_eq!(resp.error.unwrap().code, -32602);
     }
@@ -250,7 +258,7 @@ mod tests {
         .await;
         let r = resp.result.unwrap();
         if r["filtered"] == true {
-            let kept  = r["kept_chunks"].as_u64().unwrap();
+            let kept = r["kept_chunks"].as_u64().unwrap();
             let total = r["total_chunks"].as_u64().unwrap();
             assert!(kept <= total, "kept_chunks must not exceed total_chunks");
         }

@@ -30,12 +30,40 @@
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::doc_markdown,
+    clippy::unreadable_literal,
+    clippy::redundant_closure,
+    clippy::unwrap_or_default,
+    clippy::doc_overindented_list_items,
+    clippy::cloned_instead_of_copied,
+    clippy::needless_pass_by_value,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::into_iter_without_iter,
+    clippy::unnested_or_patterns,
+    clippy::let_underscore_untyped,
+    clippy::manual_let_else,
+    clippy::suspicious_open_options,
+    clippy::iter_not_returning_iterator,
+    clippy::must_use_candidate,
+    clippy::ptr_arg,
+    clippy::manual_midpoint,
+    clippy::map_unwrap_or,
+    clippy::bool_to_int_with_if,
+    clippy::missing_panics_doc
+)]
 
+pub mod bootstrap_backend;
 pub mod complexity;
 pub mod cssr;
-pub mod symbolize;
 pub mod quick_screen;
-pub mod bootstrap_backend;
+pub mod symbolize;
 
 use complexity::{bootstrap_ci, compute_metrics, stationary_distribution};
 use cssr::run_cssr;
@@ -59,9 +87,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            max_depth:    4,
-            alpha:        0.001,
-            bootstrap_b:  200,
+            max_depth: 4,
+            alpha: 0.001,
+            bootstrap_b: 200,
             alphabet_size: 2,
         }
     }
@@ -92,7 +120,10 @@ pub struct InferResult {
 #[must_use]
 pub fn infer(symbols: &[u8], cfg: Config) -> InferResult {
     if symbols.is_empty() {
-        return InferResult { cognitive_split: zero_split(), num_states: 1 };
+        return InferResult {
+            cognitive_split: zero_split(),
+            num_states: 1,
+        };
     }
     let result = run_cssr(symbols, cfg.alphabet_size, cfg.max_depth, cfg.alpha);
     let num_states = result.states.len();
@@ -100,7 +131,7 @@ pub fn infer(symbols: &[u8], cfg: Config) -> InferResult {
     InferResult {
         cognitive_split: CognitiveSplit {
             statistical_complexity: c_mu,
-            entropy_rate:           h_mu,
+            entropy_rate: h_mu,
         },
         num_states,
     }
@@ -110,7 +141,10 @@ pub fn infer(symbols: &[u8], cfg: Config) -> InferResult {
 #[must_use]
 pub fn infer_fast(symbols: &[u8], cfg: Config) -> InferResult {
     if symbols.is_empty() {
-        return InferResult { cognitive_split: zero_split(), num_states: 1 };
+        return InferResult {
+            cognitive_split: zero_split(),
+            num_states: 1,
+        };
     }
     let result = run_cssr(symbols, cfg.alphabet_size, cfg.max_depth, cfg.alpha);
     let pi = stationary_distribution(&result, symbols);
@@ -119,7 +153,7 @@ pub fn infer_fast(symbols: &[u8], cfg: Config) -> InferResult {
     InferResult {
         cognitive_split: CognitiveSplit {
             statistical_complexity: pacr_types::Estimate::exact(c_point),
-            entropy_rate:           pacr_types::Estimate::exact(h_point),
+            entropy_rate: pacr_types::Estimate::exact(h_point),
         },
         num_states,
     }
@@ -128,7 +162,7 @@ pub fn infer_fast(symbols: &[u8], cfg: Config) -> InferResult {
 fn zero_split() -> CognitiveSplit {
     CognitiveSplit {
         statistical_complexity: pacr_types::Estimate::exact(0.0),
-        entropy_rate:           pacr_types::Estimate::exact(0.0),
+        entropy_rate: pacr_types::Estimate::exact(0.0),
     }
 }
 
@@ -141,7 +175,11 @@ mod test_utils {
 
     impl TestRng {
         pub fn new(seed: u64) -> Self {
-            Self(if seed == 0 { 0xdead_beef_cafe_babe } else { seed })
+            Self(if seed == 0 {
+                0xdead_beef_cafe_babe
+            } else {
+                seed
+            })
         }
 
         pub fn next_u64(&mut self) -> u64 {
@@ -173,9 +211,17 @@ mod test_utils {
         for _ in 0..n {
             let u = rng.next_f64();
             let (sym, next) = if state == 0 {
-                if u < 2.0 / 3.0 { (0u8, 0u8) } else { (1u8, 1u8) }
+                if u < 2.0 / 3.0 {
+                    (0u8, 0u8)
+                } else {
+                    (1u8, 1u8)
+                }
             } else {
-                if u < 1.0 / 3.0 { (0u8, 0u8) } else { (1u8, 1u8) }
+                if u < 1.0 / 3.0 {
+                    (0u8, 0u8)
+                } else {
+                    (1u8, 1u8)
+                }
             };
             symbols.push(sym);
             state = next;
@@ -209,7 +255,11 @@ mod test_utils {
                 (0u8, 1u8)
             } else {
                 // SB: last was 0 → emit 0 or 1 with equal probability
-                if u < 0.5 { (0u8, 1u8) } else { (1u8, 0u8) }
+                if u < 0.5 {
+                    (0u8, 1u8)
+                } else {
+                    (1u8, 0u8)
+                }
             };
             symbols.push(sym);
             state = next;
@@ -222,8 +272,8 @@ mod test_utils {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::test_utils::{gen_even_process, gen_golden_mean};
+    use super::*;
     use approx::assert_relative_eq;
 
     // ── Basic API ─────────────────────────────────────────────────────────────
@@ -238,7 +288,13 @@ mod tests {
     #[test]
     fn infer_single_symbol_stream() {
         let symbols = vec![0u8; 1000];
-        let result = infer(&symbols, Config { max_depth: 2, ..Config::default() });
+        let result = infer(
+            &symbols,
+            Config {
+                max_depth: 2,
+                ..Config::default()
+            },
+        );
         assert_eq!(result.num_states, 1, "constant stream → 1 state");
         assert!(result.cognitive_split.entropy_rate.point < 0.05);
     }
@@ -246,7 +302,11 @@ mod tests {
     #[test]
     fn infer_alternating_stream_two_states() {
         let symbols: Vec<u8> = (0..2000).map(|i| (i % 2) as u8).collect();
-        let cfg = Config { max_depth: 2, alpha: 0.001, ..Config::default() };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            ..Config::default()
+        };
         let result = infer_fast(&symbols, cfg);
         assert_eq!(result.num_states, 2, "alternating → 2 states");
     }
@@ -259,16 +319,29 @@ mod tests {
     #[test]
     fn kat_even_process_state_count() {
         let seq = gen_even_process(10_000, 42);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer_fast(&seq, cfg);
-        assert_eq!(result.num_states, 2,
-            "Even Process must infer exactly 2 states, got {}", result.num_states);
+        assert_eq!(
+            result.num_states, 2,
+            "Even Process must infer exactly 2 states, got {}",
+            result.num_states
+        );
     }
 
     #[test]
     fn kat_even_process_complexity() {
         let seq = gen_even_process(10_000, 42);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer(&seq, cfg);
         let c = &result.cognitive_split.statistical_complexity;
         // C_μ = 1.0 bit exact.
@@ -280,7 +353,12 @@ mod tests {
     #[test]
     fn kat_even_process_entropy_rate() {
         let seq = gen_even_process(10_000, 42);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer(&seq, cfg);
         let h = &result.cognitive_split.entropy_rate;
         // h_μ ≈ 0.9183 bits/sym (H([1/3, 2/3]) weighted by stationary π).
@@ -299,16 +377,29 @@ mod tests {
     #[test]
     fn kat_golden_mean_state_count() {
         let seq = gen_golden_mean(10_000, 99);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer_fast(&seq, cfg);
-        assert_eq!(result.num_states, 2,
-            "Golden Mean must infer exactly 2 states, got {}", result.num_states);
+        assert_eq!(
+            result.num_states, 2,
+            "Golden Mean must infer exactly 2 states, got {}",
+            result.num_states
+        );
     }
 
     #[test]
     fn kat_golden_mean_complexity() {
         let seq = gen_golden_mean(10_000, 99);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer(&seq, cfg);
         let c = &result.cognitive_split.statistical_complexity;
         // C_μ = H([1/3, 2/3]) ≈ 0.9183 bits.
@@ -319,7 +410,12 @@ mod tests {
     #[test]
     fn kat_golden_mean_entropy_rate() {
         let seq = gen_golden_mean(10_000, 99);
-        let cfg = Config { max_depth: 2, alpha: 0.001, bootstrap_b: 200, alphabet_size: 2 };
+        let cfg = Config {
+            max_depth: 2,
+            alpha: 0.001,
+            bootstrap_b: 200,
+            alphabet_size: 2,
+        };
         let result = infer(&seq, cfg);
         let h = &result.cognitive_split.entropy_rate;
         // h_μ ≈ 0.6792 bits/sym (文獻B Prompt 5 reference value).
@@ -334,10 +430,18 @@ mod tests {
         // N=50_000, L=4, |A|=4 — exercises the suffix-table memory path.
         // Estimated peak: ≤ N × L × |A| × 4 B ≈ 3.2 MiB, well under 200 MiB.
         let seq: Vec<u8> = (0..50_000u64)
-            .map(|i| (i.wrapping_mul(6364136223846793005)
-                       .wrapping_add(1442695040888963407) % 4) as u8)
+            .map(|i| {
+                (i.wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407)
+                    % 4) as u8
+            })
             .collect();
-        let cfg = Config { max_depth: 4, alpha: 0.001, bootstrap_b: 10, alphabet_size: 4 };
+        let cfg = Config {
+            max_depth: 4,
+            alpha: 0.001,
+            bootstrap_b: 10,
+            alphabet_size: 4,
+        };
         let result = infer_fast(&seq, cfg);
         assert!(result.num_states >= 1);
         assert!(result.cognitive_split.statistical_complexity.point >= 0.0);
@@ -348,8 +452,8 @@ mod tests {
 
 #[cfg(test)]
 mod prop_tests {
-    use super::*;
     use super::test_utils::{gen_even_process, gen_golden_mean};
+    use super::*;
     use proptest::prelude::*;
 
     proptest! {

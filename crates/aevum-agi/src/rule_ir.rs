@@ -99,7 +99,12 @@ impl ConstraintRule {
             x.len(),
             self.weights.len()
         );
-        let dot: f64 = self.weights.iter().zip(x.iter()).map(|(w, xi)| w * xi).sum();
+        let dot: f64 = self
+            .weights
+            .iter()
+            .zip(x.iter())
+            .map(|(w, xi)| w * xi)
+            .sum();
         dot + self.bias > 0.0
     }
 }
@@ -139,7 +144,10 @@ impl ConstraintMatrix {
     /// Create an empty constraint matrix.
     #[must_use]
     pub fn new() -> Self {
-        Self { rules: Vec::new(), dimension: None }
+        Self {
+            rules: Vec::new(),
+            dimension: None,
+        }
     }
 
     /// Number of rules in the matrix.
@@ -170,7 +178,7 @@ impl ConstraintMatrix {
             Some(d) if rule.weights.len() != d => {
                 return Err(RuleIrError::DimensionMismatch {
                     expected: d,
-                    got:      rule.weights.len(),
+                    got: rule.weights.len(),
                 });
             }
             _ => {}
@@ -199,7 +207,7 @@ impl ConstraintMatrix {
         if x.len() != d {
             return Err(RuleIrError::DimensionMismatch {
                 expected: d,
-                got:      x.len(),
+                got: x.len(),
             });
         }
 
@@ -217,8 +225,8 @@ impl ConstraintMatrix {
             .filter(|&i| self.rules[i].evaluate(x))
             .map(|i| RuleViolation {
                 rule_index: i,
-                label:      self.rules[i].label.clone(),
-                severity:   self.rules[i].severity,
+                label: self.rules[i].label.clone(),
+                severity: self.rules[i].severity,
             })
             .collect();
 
@@ -241,15 +249,15 @@ impl Default for ConstraintMatrix {
 /// `GammaCalculator` as part of the autopoiesis OBSERVE step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuleIr {
-    matrix:           ConstraintMatrix,
+    matrix: ConstraintMatrix,
     /// Total candidates screened since construction.
     pub candidates_screened: u64,
     /// Total candidates blocked (at least one rule violated).
-    pub candidates_blocked:  u64,
+    pub candidates_blocked: u64,
     /// Append-only list of ban records (one per banned agent).
-    ban_records:  Vec<PacrRecord>,
+    ban_records: Vec<PacrRecord>,
     /// Fast O(1) lookup set of banned CausalIds.
-    banned_set:   std::collections::HashSet<CausalId>,
+    banned_set: std::collections::HashSet<CausalId>,
 }
 
 impl RuleIr {
@@ -257,11 +265,11 @@ impl RuleIr {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            matrix:              ConstraintMatrix::new(),
+            matrix: ConstraintMatrix::new(),
             candidates_screened: 0,
-            candidates_blocked:  0,
-            ban_records:         Vec::new(),
-            banned_set:          std::collections::HashSet::new(),
+            candidates_blocked: 0,
+            ban_records: Vec::new(),
+            banned_set: std::collections::HashSet::new(),
         }
     }
 
@@ -344,7 +352,7 @@ impl RuleIr {
         // Validate energy ≥ Landauer floor.
         if record.resources.energy.point < record.landauer_cost.point {
             return Err(BanError::EnergyBelowLandauer {
-                energy:   record.resources.energy.point,
+                energy: record.resources.energy.point,
                 landauer: record.landauer_cost.point,
             });
         }
@@ -354,7 +362,9 @@ impl RuleIr {
         }
         // Extract banned CausalId from first 16 bytes of payload.
         if record.payload.len() < 16 {
-            return Err(BanError::PayloadTooShort { got: record.payload.len() });
+            return Err(BanError::PayloadTooShort {
+                got: record.payload.len(),
+            });
         }
         let mut id_bytes = [0u8; 16];
         id_bytes.copy_from_slice(&record.payload[..16]);
@@ -413,7 +423,12 @@ mod tests {
     use super::*;
 
     fn rule(label: &str, weights: Vec<f64>, bias: f64, severity: f64) -> ConstraintRule {
-        ConstraintRule { label: label.into(), weights, bias, severity }
+        ConstraintRule {
+            label: label.into(),
+            weights,
+            bias,
+            severity,
+        }
     }
 
     // ── ConstraintRule ─────────────────────────────────────────────────────────
@@ -451,22 +466,34 @@ mod tests {
     #[test]
     fn add_rule_sets_dimension() {
         let mut matrix = ConstraintMatrix::new();
-        matrix.add_rule(rule("r1", vec![1.0, 2.0], 0.0, 1.0)).unwrap();
+        matrix
+            .add_rule(rule("r1", vec![1.0, 2.0], 0.0, 1.0))
+            .unwrap();
         assert_eq!(matrix.dimension(), Some(2));
     }
 
     #[test]
     fn add_rule_dimension_mismatch_rejected() {
         let mut matrix = ConstraintMatrix::new();
-        matrix.add_rule(rule("r1", vec![1.0, 2.0], 0.0, 1.0)).unwrap();
+        matrix
+            .add_rule(rule("r1", vec![1.0, 2.0], 0.0, 1.0))
+            .unwrap();
         let result = matrix.add_rule(rule("r2", vec![1.0], 0.0, 1.0));
-        assert_eq!(result, Err(RuleIrError::DimensionMismatch { expected: 2, got: 1 }));
+        assert_eq!(
+            result,
+            Err(RuleIrError::DimensionMismatch {
+                expected: 2,
+                got: 1
+            })
+        );
     }
 
     #[test]
     fn screen_returns_empty_when_no_violations() {
         let mut matrix = ConstraintMatrix::new();
-        matrix.add_rule(rule("r1", vec![1.0, 0.0], -10.0, 1.0)).unwrap();
+        matrix
+            .add_rule(rule("r1", vec![1.0, 0.0], -10.0, 1.0))
+            .unwrap();
         let violations = matrix.screen(&[1.0, 0.0]).unwrap();
         assert!(violations.is_empty());
     }
@@ -517,7 +544,8 @@ mod tests {
     #[test]
     fn is_allowed_false_when_rule_violated() {
         let mut ir = RuleIr::new();
-        ir.add_rule(rule("bad_config", vec![1.0, 0.0], -0.5, 3.0)).unwrap();
+        ir.add_rule(rule("bad_config", vec![1.0, 0.0], -0.5, 3.0))
+            .unwrap();
         let allowed = ir.is_allowed(&[1.0, 0.0]).unwrap();
         assert!(!allowed, "should be blocked by rule");
         assert_eq!(ir.candidates_blocked, 1);
@@ -526,7 +554,8 @@ mod tests {
     #[test]
     fn is_allowed_true_when_rule_not_violated() {
         let mut ir = RuleIr::new();
-        ir.add_rule(rule("safe_config", vec![1.0, 0.0], -10.0, 1.0)).unwrap();
+        ir.add_rule(rule("safe_config", vec![1.0, 0.0], -10.0, 1.0))
+            .unwrap();
         let allowed = ir.is_allowed(&[1.0, 0.0]).unwrap();
         assert!(allowed, "should pass rule");
         assert_eq!(ir.candidates_blocked, 0);
@@ -536,7 +565,7 @@ mod tests {
     fn blocking_rate_increases_with_blocks() {
         let mut ir = RuleIr::new();
         ir.add_rule(rule("r", vec![1.0], -0.5, 1.0)).unwrap();
-        ir.is_allowed(&[1.0]).unwrap();  // blocked
+        ir.is_allowed(&[1.0]).unwrap(); // blocked
         ir.is_allowed(&[-1.0]).unwrap(); // allowed
         assert!((ir.blocking_rate() - 0.5).abs() < 1e-10);
     }
@@ -545,8 +574,8 @@ mod tests {
     fn rule_violation_display() {
         let v = RuleViolation {
             rule_index: 0,
-            label:      "epsilon_too_wide".into(),
-            severity:   4.2,
+            label: "epsilon_too_wide".into(),
+            severity: 4.2,
         };
         let s = v.to_string();
         assert!(s.contains("epsilon_too_wide"), "{s}");
@@ -579,12 +608,12 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::from(payload))
             .build()
@@ -620,17 +649,17 @@ mod tests {
         // Build the record directly (bypassing builder) so we can set
         // a self-referencing predecessor set.
         let rec = PacrRecord {
-            id:              self_id,
-            predecessors:    smallvec![self_id] as PredecessorSet,
-            landauer_cost:   Estimate::exact(1e-20),
-            resources:       ResourceTriple {
+            id: self_id,
+            predecessors: smallvec![self_id] as PredecessorSet,
+            landauer_cost: Estimate::exact(1e-20),
+            resources: ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             },
             cognitive_split: CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             },
             payload: Bytes::from(payload),
         };
@@ -652,16 +681,19 @@ mod tests {
             .landauer_cost(Estimate::exact(1e-20))
             .resources(ResourceTriple {
                 energy: Estimate::exact(1e-16),
-                time:   Estimate::exact(1e-6),
-                space:  Estimate::exact(0.0),
+                time: Estimate::exact(1e-6),
+                space: Estimate::exact(0.0),
             })
             .cognitive_split(CognitiveSplit {
                 statistical_complexity: Estimate::exact(0.0),
-                entropy_rate:           Estimate::exact(0.0),
+                entropy_rate: Estimate::exact(0.0),
             })
             .payload(Bytes::from_static(b"short")) // < 16 bytes
             .build()
             .unwrap();
-        assert!(matches!(ir.add_ban(rec), Err(BanError::PayloadTooShort { .. })));
+        assert!(matches!(
+            ir.add_ban(rec),
+            Err(BanError::PayloadTooShort { .. })
+        ));
     }
 }
